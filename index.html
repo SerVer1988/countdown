@@ -925,7 +925,7 @@
 
     <div class="field">
       <label>Название *</label>
-      <input type="text" id="inp-name" placeholder="Например: День рождения Маши" maxlength="80">
+      <input type="text" id="inp-name" placeholder="Например: День рождения Влада" maxlength="80">
     </div>
 
     <div class="field">
@@ -1352,17 +1352,19 @@ function renderEvents() {
 
     if (upcoming.length) {
       html += `<div class="section"><div class="section-label">Предстоящие</div><div class="events-grid">`;
-      upcoming.forEach(e => html += cardHTML(e)); html += `</div></div>`;
+      upcoming.forEach(e => { try { html += cardHTML(e); } catch(err) { console.error('cardHTML error', e.id, err); } });
+      html += `</div></div>`;
     }
     if (passed.length) {
       html += `<div class="section"><div class="section-label">Прошедшие в этом году</div><div class="events-grid">`;
-      passed.forEach(e => html += cardHTML(e)); html += `</div></div>`;
+      passed.forEach(e => { try { html += cardHTML(e); } catch(err) { console.error('cardHTML error', e.id, err); } });
+      html += `</div></div>`;
     }
   } else {
-    // Недавно добавленные — плоский список
     if (active.length) {
       html += `<div class="section"><div class="events-grid">`;
-      active.forEach(e => html += cardHTML(e)); html += `</div></div>`;
+      active.forEach(e => { try { html += cardHTML(e); } catch(err) { console.error('cardHTML error', e.id, err); } });
+      html += `</div></div>`;
     }
   }
 
@@ -2087,13 +2089,20 @@ const style = document.createElement('style');
 style.textContent = `@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }`;
 document.head.appendChild(style);
 
-// Re-read events from localStorage on every load (fix: sync state)
-events = loadEvents();
+function initApp() {
+  events = loadEvents();
+  updateHeaderDate();
+  renderEvents();
+  checkDailyReminders();
+  scheduleReminders();
+}
 
-updateHeaderDate();
-renderEvents();
-checkDailyReminders();
-scheduleReminders();
+// Гарантируем запуск после полной загрузки DOM
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
 
 // Обновление при возврате в приложение (из фона)
 document.addEventListener('visibilitychange', () => {
@@ -2111,7 +2120,9 @@ setInterval(() => {
 
 // Register service worker (PWA offline support)
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js').catch(() => {});
+  navigator.serviceWorker.register('./sw.js').then(reg => {
+    reg.update(); // принудительно проверяем обновления при каждом запуске
+  }).catch(() => {});
 }
 </script>
 <!-- DRAWER -->
