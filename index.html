@@ -1,0 +1,1997 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d0d0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Отсчёт">
+<meta name="description" content="Контроль за важными датами">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.png" type="image/png">
+<link rel="apple-touch-icon" href="icon.png">
+<title>Обратный отсчёт</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0f;
+    --bg2: #161618;
+    --bg3: #1e1e21;
+    --border: rgba(255,255,255,0.08);
+    --border2: rgba(255,255,255,0.14);
+    --text: #f0ede8;
+    --text2: #9a9490;
+    --text3: #5e5a56;
+    --amber: #e8a030;
+    --amber2: #c47e18;
+    --amber-dim: rgba(232,160,48,0.12);
+    --teal: #3ecfa0;
+    --teal-dim: rgba(62,207,160,0.1);
+    --red: #e05555;
+    --red-dim: rgba(224,85,85,0.1);
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Manrope', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    padding-bottom: 4rem;
+  }
+
+  /* --- NOISE TEXTURE --- */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  /* --- HEADER --- */
+  header {
+    position: relative;
+    z-index: 1;
+    padding: 3rem 2rem 2rem;
+    max-width: 860px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .logo h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem;
+    font-weight: 500;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .logo span {
+    color: var(--amber);
+  }
+
+  .logo p {
+    font-size: 13px;
+    color: var(--text2);
+    margin-top: 6px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .today-badge {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--text2);
+    white-space: nowrap;
+  }
+
+  .today-badge strong {
+    color: var(--amber);
+    font-weight: 500;
+  }
+
+  /* --- MAIN LAYOUT --- */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 0 2rem;
+  }
+
+  /* --- ADD BUTTON --- */
+  .add-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--amber);
+    color: #1a0f00;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 10px 18px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    width: 100%;
+    justify-content: center;
+    margin-bottom: 2rem;
+  }
+
+  .add-btn:hover { background: #f0a830; }
+  .add-btn:active { transform: scale(0.98); }
+
+  .add-btn svg { width: 16px; height: 16px; }
+
+  /* --- MODAL OVERLAY --- */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    backdrop-filter: blur(4px);
+  }
+
+  .overlay.open { display: flex; }
+
+  .modal {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 2rem;
+    width: 100%;
+    max-width: 440px;
+    animation: popIn 0.2s ease;
+  }
+
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.95) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .modal h2 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+    color: var(--text);
+  }
+
+  .field {
+    margin-bottom: 1rem;
+  }
+
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text2);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .field input, .field select, .field textarea {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.15s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  .field input[type="date"] {
+    color-scheme: dark;
+  }
+
+  .field input:focus, .field select:focus, .field textarea:focus {
+    border-color: var(--amber);
+  }
+
+  .field textarea {
+    resize: vertical;
+    min-height: 72px;
+  }
+
+  .reminder-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: border-color 0.15s;
+  }
+
+  .reminder-toggle:hover { border-color: var(--border2); }
+
+  .reminder-toggle.active { border-color: var(--amber); background: var(--amber-dim); }
+
+  .toggle-dot {
+    width: 36px;
+    height: 20px;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+
+  .toggle-dot::after {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--text3);
+    top: 2px;
+    left: 2px;
+    transition: transform 0.2s, background 0.2s;
+  }
+
+  .reminder-toggle.active .toggle-dot { background: var(--amber2); border-color: var(--amber); }
+  .reminder-toggle.active .toggle-dot::after { transform: translateX(16px); background: #fff; }
+
+  .toggle-label { font-size: 14px; color: var(--text2); }
+  .reminder-toggle.active .toggle-label { color: var(--amber); }
+
+  .reminder-days-row {
+    display: none;
+    gap: 8px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+
+  .reminder-days-row.visible { display: flex; }
+
+  .day-chip {
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border2);
+    font-size: 12px;
+    color: var(--text2);
+    cursor: pointer;
+    background: var(--bg3);
+    transition: all 0.15s;
+    user-select: none;
+  }
+
+  .day-chip.selected {
+    background: var(--amber-dim);
+    border-color: var(--amber);
+    color: var(--amber);
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 1.5rem;
+  }
+
+  .btn-save {
+    flex: 1;
+    background: var(--amber);
+    color: #1a0f00;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-save:hover { background: #f0a830; }
+
+  .btn-cancel {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .btn-cancel:hover { border-color: var(--border2); color: var(--text); }
+
+  /* --- EMPTY STATE --- */
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: var(--text3);
+  }
+
+  .empty-state svg { opacity: 0.3; margin-bottom: 1rem; }
+  .empty-state p { font-size: 14px; }
+
+  /* --- EVENTS LIST --- */
+  .events-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  /* --- EVENT CARD (compact 2-line row) --- */
+  .event-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-left: 3px solid transparent;
+    border-radius: var(--radius-sm);
+    padding: 7px 10px 7px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    animation: fadeSlide 0.3s ease;
+    transition: border-color 0.2s, background 0.15s;
+  }
+
+  .event-card:hover { background: var(--bg3); }
+
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .event-card.past       { border-left-color: var(--text3); }
+  .event-card.future     { border-left-color: var(--amber); }
+  .event-card.today-card { border-left-color: var(--teal); }
+
+  /* Row 1: name · date · bell · actions */
+  .card-row1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .event-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3;
+  }
+
+  .event-date {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text3);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .reminder-icon {
+    color: var(--amber);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+  }
+  .reminder-icon svg { width: 13px; height: 13px; }
+
+  .card-actions {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .event-card:hover .card-actions { opacity: 1; }
+
+  .icon-btn {
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    border: none;
+    background: transparent;
+    color: var(--text3);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .icon-btn:hover { background: var(--bg); color: var(--text2); }
+  .icon-btn.delete:hover { color: var(--red); background: var(--red-dim); }
+  .icon-btn svg { width: 13px; height: 13px; }
+
+  /* Row 2: countdown line */
+  .card-row2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    padding-left: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .card-row2 strong { font-weight: 600; }
+  .future .card-row2 strong     { color: var(--amber); }
+  .past .card-row2 strong       { color: var(--text); }
+  .today-card .card-row2 strong { color: var(--teal); }
+
+  .cnt-sep { color: var(--text3); }
+
+  .cnt-suffix {
+    color: var(--text3);
+    margin-left: 4px;
+  }
+
+  /* --- NOTE ROW ON CARD --- */
+  .card-row3 {
+    font-size: 11px;
+    color: var(--text3);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding-left: 1px;
+    line-height: 1.4;
+  }
+
+  /* --- CATEGORY TAG ON CARD --- */
+  .card-tag {
+    font-size: 10px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+    opacity: 0.9;
+  }
+
+  /* --- EVENT TYPE TOGGLE --- */
+  .type-toggle {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    width: fit-content;
+    margin-top: 4px;
+  }
+  .type-btn {
+    padding: 6px 18px;
+    font-size: 13px;
+    background: transparent;
+    color: var(--text2);
+    border: none;
+    cursor: pointer;
+    font-family: 'Manrope', sans-serif;
+    transition: all 0.15s;
+  }
+  .type-btn + .type-btn { border-left: 1px solid var(--border); }
+  .type-btn:hover { background: var(--bg3); color: var(--text); }
+  .type-btn.active { background: var(--amber-dim); color: var(--amber); font-weight: 600; }
+
+  /* --- CATEGORY CHIPS IN MODAL --- */
+  .cat-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+  .cat-chip {
+    font-size: 12px; padding: 5px 12px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--bg3);
+    color: var(--text2); cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    user-select: none;
+  }
+  .cat-chip:hover { border-color: var(--border2); color: var(--text); }
+  .cat-chip.selected { font-weight: 700; }
+
+  /* --- COLOR SWATCHES IN MODAL --- */
+  .color-swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; align-items: center; }
+  .color-swatch {
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer;
+    border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s;
+    flex-shrink: 0; outline-offset: 2px;
+  }
+  .color-swatch:hover { transform: scale(1.2); }
+  .color-swatch.selected { border-color: var(--text) !important; transform: scale(1.15); }
+  .swatch-custom {
+    width: 22px; height: 22px; border-radius: 50%; cursor: pointer; flex-shrink: 0;
+    background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red);
+    border: 2px solid transparent; position: relative; overflow: hidden; transition: transform 0.15s;
+  }
+  .swatch-custom:hover { transform: scale(1.2); }
+  .swatch-custom input[type=color] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; border: none; padding: 0;
+  }
+
+  /* --- CATEGORY FILTER BAR --- */
+  .cat-filter-bar {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px;
+  }
+  .cat-filter-btn {
+    font-size: 11px; padding: 3px 11px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--bg2);
+    color: var(--text3); cursor: pointer; transition: all 0.15s; white-space: nowrap;
+    font-family: 'Manrope', sans-serif;
+  }
+  .cat-filter-btn:hover { background: var(--bg3); color: var(--text2); }
+  .cat-filter-btn.active { color: var(--text); border-color: var(--border2); font-weight: 600; background: var(--bg3); }
+
+  /* --- TOAST --- */
+  #toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 999;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    pointer-events: none;
+  }
+
+  .toast {
+    background: var(--bg2);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--amber);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    color: var(--text);
+    font-size: 13px;
+    max-width: 300px;
+    animation: toastIn 0.3s ease;
+    pointer-events: all;
+  }
+
+  .toast strong { color: var(--amber); }
+
+  @keyframes toastIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* --- SECTIONS --- */
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section + .section { margin-top: 2.5rem; }
+
+  /* --- MINI CALENDAR --- */
+  .cal-widget {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px 10px;
+    margin-bottom: 14px;
+    display: none;
+  }
+  .cal-widget.open { display: block; }
+
+  .cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .cal-nav {
+    width: 28px; height: 28px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; line-height: 1;
+  }
+  .cal-nav:hover { border-color: var(--amber); color: var(--amber); }
+  .cal-title {
+    font-size: 13px; font-weight: 700;
+    color: var(--text); letter-spacing: 0.03em;
+    cursor: pointer; user-select: none;
+  }
+  .cal-title:hover { color: var(--amber); }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+  .cal-day-name {
+    text-align: center; font-size: 9px; font-weight: 700;
+    color: var(--text3); padding: 3px 0;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .cal-day {
+    text-align: center; padding: 3px 1px;
+    border-radius: 6px; cursor: default;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 2px; min-height: 34px;
+  }
+  .cal-day-num {
+    font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    color: var(--text2); width: 20px; height: 20px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; line-height: 1; flex-shrink: 0;
+  }
+  .cal-day.other-month .cal-day-num { color: var(--text3); opacity: 0.35; }
+  .cal-day.is-today .cal-day-num { background: var(--amber); color: #000; font-weight: 700; }
+  .cal-day.has-event { cursor: pointer; }
+  .cal-day.has-event:hover { background: var(--bg3); }
+  .cal-day.cal-selected { background: var(--bg3); outline: 1px solid var(--border2); }
+  .cal-dots { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; }
+  .cal-dot  { width: 4px; height: 4px; border-radius: 50%; flex-shrink: 0; }
+
+  .cal-filter-hint {
+    font-size: 11px; color: var(--amber); text-align: center;
+    margin-top: 8px; cursor: pointer; padding: 2px;
+  }
+  .cal-filter-hint:hover { text-decoration: underline; }
+
+  /* --- SORT BAR --- */
+  .sort-bar {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+
+  .sort-btn {
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    font-size: 12px;
+    font-family: 'Manrope', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .sort-btn:hover { border-color: var(--border2); color: var(--text); }
+  .sort-btn.active { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
+
+  /* --- RESPONSIVE --- */
+  @media (max-width: 600px) {
+    header { padding: 2rem 1rem 1.5rem; }
+    main { padding: 0 1rem; }
+    .events-grid { grid-template-columns: 1fr; }
+    .countdown-num { font-size: 2.2rem; }
+  }
+
+  .dl-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg2);
+    color: var(--text2);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+    font-family: 'Manrope', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .dl-btn:hover { color: var(--text); border-color: var(--amber); background: var(--amber-dim); }
+  .dl-btn svg { width: 14px; height: 14px; }
+
+  /* --- DONE / ARCHIVE --- */
+  .event-card.done { opacity: 0.5; }
+  .event-card.done .event-name { text-decoration: line-through; color: var(--text3); }
+
+  .archive-toggle {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; font-weight: 600; color: var(--text3);
+    cursor: pointer; padding: 10px 0 6px;
+    border-top: 1px solid var(--border);
+    margin-top: 12px; user-select: none; letter-spacing: 0.04em; text-transform: uppercase;
+    transition: color 0.15s;
+  }
+  .archive-toggle:hover { color: var(--text2); }
+  .archive-toggle svg { width: 12px; height: 12px; transition: transform 0.2s; flex-shrink: 0; }
+  .archive-toggle.open svg { transform: rotate(90deg); }
+  .archive-body { display: none; padding-top: 6px; }
+  .archive-body.open { display: block; }
+
+  /* --- ROW2 COLORED LABELS --- */
+  .lbl-passed    { color: #60a5fa; }
+  .lbl-remaining { color: var(--amber); }
+  .future .card-row2 .lbl-remaining strong { color: var(--amber); }
+  .past   .card-row2 .lbl-remaining strong { color: var(--amber); }
+
+  /* --- CATEGORY MANAGER MODAL --- */
+  .cat-mgr-list { margin-bottom: 16px; }
+  .cat-mgr-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid var(--border);
+  }
+  .cat-mgr-item:last-child { border-bottom: none; }
+  .cat-mgr-emoji { font-size: 18px; flex-shrink: 0; }
+  .cat-mgr-dot   { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .cat-mgr-name  { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
+  .cat-mgr-del {
+    width: 26px; height: 26px; border: none; background: transparent;
+    color: var(--text3); cursor: pointer; border-radius: 5px;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .cat-mgr-del:hover { color: var(--red); background: var(--red-dim); }
+  .cat-mgr-del svg { width: 13px; height: 13px; }
+
+  .add-cat-row {
+    display: grid; grid-template-columns: 48px 1fr 36px;
+    gap: 8px; align-items: center; margin-top: 10px;
+  }
+  .inp-emoji {
+    text-align: center; font-size: 20px;
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 6px 4px;
+    color: var(--text); width: 100%; outline: none;
+  }
+  .inp-emoji:focus { border-color: var(--amber); }
+  .inp-catname {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 7px 10px;
+    color: var(--text); font-size: 13px; font-family: 'Manrope', sans-serif;
+    outline: none; width: 100%;
+  }
+  .inp-catname:focus { border-color: var(--amber); }
+  .inp-cat-color {
+    width: 36px; height: 36px; border-radius: 50%;
+    border: 2px solid var(--border); cursor: pointer; padding: 0;
+    background: transparent;
+  }
+  .btn-add-cat {
+    margin-top: 12px; width: 100%;
+    background: var(--amber-dim); color: var(--amber);
+    border: 1px solid var(--amber); border-radius: var(--radius-sm);
+    padding: 8px; font-family: 'Manrope', sans-serif; font-size: 13px;
+    font-weight: 600; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-add-cat:hover { background: var(--amber); color: #000; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <h1>Обратный <span>отсчёт</span></h1>
+    <p id="today-display">загрузка...</p>
+  </div>
+
+</header>
+
+<main>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+    <button class="add-btn" onclick="openModal()">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
+      </svg>
+      Добавить событие
+    </button>
+    <button class="dl-btn" onclick="downloadData()" title="Скачать данные (JSON)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="2" x2="8" y2="11"/>
+        <polyline points="5,8 8,11 11,8"/>
+        <path d="M3 14h10"/>
+      </svg>
+      Экспорт
+    </button>
+    <button class="dl-btn" onclick="document.getElementById('import-file').click()" title="Загрузить данные (JSON)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="11" x2="8" y2="2"/>
+        <polyline points="5,5 8,2 11,5"/>
+        <path d="M3 14h10"/>
+      </svg>
+      Импорт
+    </button>
+    <button class="dl-btn" onclick="toggleCalendar()" id="cal-toggle-btn" title="Мини-календарь">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <rect x="2" y="3" width="12" height="11" rx="2"/>
+        <line x1="5" y1="1" x2="5" y2="5"/><line x1="11" y1="1" x2="11" y2="5"/>
+        <line x1="2" y1="7" x2="14" y2="7"/>
+      </svg>
+      Календарь
+    </button>
+    <button class="dl-btn" onclick="openCatManager()" title="Управление категориями">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="8" cy="8" r="2"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.5 3.5l.7.7M11.8 11.8l.7.7M11.8 4.2l-.7.7M4.2 11.8l-.7.7"/>
+      </svg>
+      Категории
+    </button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"/>
+  </div>
+
+  <!-- MINI CALENDAR -->
+  <div class="cal-widget" id="cal-widget">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calPrev()">‹</button>
+      <span class="cal-title" id="cal-title" onclick="calGoToday()">—</span>
+      <button class="cal-nav" onclick="calNext()">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-filter-hint" id="cal-hint" style="display:none" onclick="calClearFilter()">
+      ✕ Сбросить фильтр по дате
+    </div>
+  </div>
+
+  <div class="sort-bar" id="sort-bar" style="display:none">
+    <button class="sort-btn active" data-sort="closest" onclick="setSort(this,'closest')">По близости</button>
+    <button class="sort-btn"        data-sort="added"   onclick="setSort(this,'added')">Недавно добавленные</button>
+  </div>
+
+  <div class="cat-filter-bar" id="cat-filter-bar" style="display:none"><!-- rendered by JS --></div>
+
+  <div id="events-container"></div>
+</main>
+
+<!-- MODAL -->
+<div class="overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="modal">
+    <h2 id="modal-title">Новое событие</h2>
+
+    <div class="field">
+      <label>Название *</label>
+      <input type="text" id="inp-name" placeholder="Например: День рождения Маши" maxlength="80">
+    </div>
+
+    <div class="field">
+      <label>Дата *</label>
+      <input type="date" id="inp-date">
+    </div>
+
+    <div class="field">
+      <label>Заметка</label>
+      <textarea id="inp-note" placeholder="Дополнительная информация..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Тип события</label>
+      <div class="type-toggle">
+        <button class="type-btn active" id="type-annual" onclick="setEventType('annual')">🔁 Ежегодное</button>
+        <button class="type-btn"       id="type-once"   onclick="setEventType('once')">📌 Разовое</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Категория</label>
+      <div class="cat-picker" id="cat-picker"><!-- rendered by JS --></div>
+    </div>
+
+    <div class="field">
+      <label>Цвет события</label>
+      <div class="color-swatches" id="color-swatches">
+        <span class="color-swatch" data-color="#e879a0" onclick="selectSwatch(this)" style="background:#e879a0" title="Розовый"></span>
+        <span class="color-swatch" data-color="#a855f7" onclick="selectSwatch(this)" style="background:#a855f7" title="Фиолетовый"></span>
+        <span class="color-swatch" data-color="#ef4444" onclick="selectSwatch(this)" style="background:#ef4444" title="Красный"></span>
+        <span class="color-swatch" data-color="#f97316" onclick="selectSwatch(this)" style="background:#f97316" title="Оранжевый"></span>
+        <span class="color-swatch" data-color="#eab308" onclick="selectSwatch(this)" style="background:#eab308" title="Жёлтый"></span>
+        <span class="color-swatch" data-color="#22c55e" onclick="selectSwatch(this)" style="background:#22c55e" title="Зелёный"></span>
+        <span class="color-swatch" data-color="#60a5fa" onclick="selectSwatch(this)" style="background:#60a5fa" title="Синий"></span>
+        <span class="color-swatch" data-color="#94a3b8" onclick="selectSwatch(this)" style="background:#94a3b8" title="Серый"></span>
+        <span class="swatch-custom" title="Свой цвет">
+          <input type="color" id="inp-color-custom" value="#ffffff" oninput="onCustomColor(this)">
+        </span>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Напоминание</label>
+      <div class="reminder-toggle" id="reminder-toggle" onclick="toggleReminder()">
+        <div class="toggle-dot"></div>
+        <span class="toggle-label">Включить напоминание</span>
+      </div>
+      <div class="reminder-days-row" id="reminder-chips">
+        <span class="day-chip selected" data-days="1" onclick="toggleChip(this)">За 1 день</span>
+        <span class="day-chip" data-days="3" onclick="toggleChip(this)">За 3 дня</span>
+        <span class="day-chip" data-days="7" onclick="toggleChip(this)">За 7 дней</span>
+        <span class="day-chip" data-days="14" onclick="toggleChip(this)">За 14 дней</span>
+        <span class="day-chip" data-days="30" onclick="toggleChip(this)">За 30 дней</span>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-save" onclick="saveEvent()">Сохранить</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<script>
+/* ===== STATE ===== */
+let events = JSON.parse(localStorage.getItem('countdown_events') || '[]');
+let editingId = null;
+let reminderActive = false;
+let currentSort = 'closest';
+let selectedCat  = null;
+let selectedColor = null;
+let selectedType  = 'annual';
+let activeCatFilter = 'all';
+
+const DEFAULT_CATEGORIES = {
+  birthday:    { emoji: '🎂', name: 'День рождения', color: '#e879a0' },
+  anniversary: { emoji: '💍', name: 'Годовщина',     color: '#a855f7' },
+  deadline:    { emoji: '⏰', name: 'Дедлайн',        color: '#ef4444' },
+  personal:    { emoji: '👤', name: 'Личное',         color: '#60a5fa' },
+  other:       { emoji: '📋', name: 'Другое',         color: '#94a3b8' },
+};
+let categories = JSON.parse(localStorage.getItem('countdown_categories') || JSON.stringify(DEFAULT_CATEGORIES));
+function saveCategories() { localStorage.setItem('countdown_categories', JSON.stringify(categories)); }
+
+/* ===== DATE UTILS ===== */
+function today() {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+function parseDate(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function diffDays(dateStr) {
+  const t = today();
+  const e = parseDate(dateStr);
+  return Math.round((e - t) / 86400000);
+}
+
+function formatDateRu(dateStr) {
+  const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  const d = parseDate(dateStr);
+  return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function todayStr() {
+  const d = today();
+  return `${d.getDate().toString().padStart(2,'0')}.${(d.getMonth()+1).toString().padStart(2,'0')}.${d.getFullYear()}`;
+}
+
+function toInputDate(d) {
+  return `${d.getFullYear()}-${(d.getMonth()+1).toString().padStart(2,'0')}-${d.getDate().toString().padStart(2,'0')}`;
+}
+
+/* ===== HEADER DATE ===== */
+function updateHeaderDate() {
+  const d = today();
+  const days = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+  const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  document.getElementById('today-display').textContent =
+    `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  document.getElementById('today-short').textContent = todayStr();
+}
+
+/* ===== SORT ===== */
+function setSort(btn, type) {
+  currentSort = type;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEvents();
+}
+
+function daysUntilNext(dateStr) {
+  const t      = today();
+  const parsed = parseDate(dateStr);
+  const mm = parsed.getMonth(), dd = parsed.getDate();
+  let next = new Date(t.getFullYear(), mm, dd);
+  if (next <= t) next = new Date(t.getFullYear() + 1, mm, dd);
+  return Math.round((next - t) / 86400000);
+}
+
+function sortedEvents() {
+  const arr = [...events];
+  if (currentSort === 'closest') arr.sort((a, b) => daysUntilNext(a.date) - daysUntilNext(b.date));
+  else arr.reverse(); // 'added' — последние добавленные сверху
+  return arr;
+}
+
+/* ===== MINI CALENDAR ===== */
+let calYear  = today().getFullYear();
+let calMonth = today().getMonth();
+let calSelectedDate = null;
+
+const MONTHS_RU = ['Январь','Февраль','Март','Апрель','Май','Июнь',
+                   'Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const DAYS_SHORT = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+
+function getEventsForDay(y, m, d) {
+  return events.filter(ev => {
+    const dt = parseDate(ev.date);
+    if (ev.type === 'once') {
+      return dt.getFullYear() === y && dt.getMonth() === m && dt.getDate() === d;
+    }
+    return dt.getMonth() === m && dt.getDate() === d; // ежегодное — только месяц/день
+  });
+}
+
+function getEventColor(ev) {
+  if (ev.color) return ev.color;
+  if (ev.category) return categories[ev.category]?.color || 'var(--amber)';
+  return 'var(--amber)';
+}
+
+function renderCalendar() {
+  const t = today();
+  document.getElementById('cal-title').textContent = `${MONTHS_RU[calMonth]} ${calYear}`;
+
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay  = new Date(calYear, calMonth + 1, 0);
+
+  // Пн=0 ... Вс=6
+  let startDow = firstDay.getDay();
+  startDow = startDow === 0 ? 6 : startDow - 1;
+
+  let html = DAYS_SHORT.map(d => `<div class="cal-day-name">${d}</div>`).join('');
+
+  // Дни предыдущего месяца
+  for (let i = 0; i < startDow; i++) {
+    const dt = new Date(calYear, calMonth, i - startDow + 1);
+    html += `<div class="cal-day other-month"><div class="cal-day-num">${dt.getDate()}</div></div>`;
+  }
+
+  // Дни текущего месяца
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const isToday    = t.getFullYear() === calYear && t.getMonth() === calMonth && t.getDate() === d;
+    const dateKey    = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayEvts    = getEventsForDay(calYear, calMonth, d);
+    const isSelected = calSelectedDate === dateKey;
+
+    const dots = dayEvts.slice(0, 6).map(ev =>
+      `<span class="cal-dot" style="background:${getEventColor(ev)}" title="${escapeHtml(ev.name)}"></span>`
+    ).join('');
+
+    const cls = ['cal-day',
+      isToday    ? 'is-today'    : '',
+      dayEvts.length ? 'has-event' : '',
+      isSelected ? 'cal-selected' : '',
+    ].filter(Boolean).join(' ');
+
+    const click = dayEvts.length ? `onclick="calSelectDay('${dateKey}')"` : '';
+
+    html += `<div class="${cls}" ${click}>
+      <div class="cal-day-num">${d}</div>
+      ${dots ? `<div class="cal-dots">${dots}</div>` : ''}
+    </div>`;
+  }
+
+  // Дни следующего месяца
+  const trailing = (startDow + lastDay.getDate()) % 7;
+  if (trailing > 0) {
+    for (let i = 1; i <= 7 - trailing; i++) {
+      html += `<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
+    }
+  }
+
+  document.getElementById('cal-grid').innerHTML = html;
+  document.getElementById('cal-hint').style.display = calSelectedDate ? 'block' : 'none';
+}
+
+function calPrev() {
+  if (--calMonth < 0) { calMonth = 11; calYear--; }
+  calSelectedDate = null;
+  renderCalendar(); renderEvents();
+}
+
+function calNext() {
+  if (++calMonth > 11) { calMonth = 0; calYear++; }
+  calSelectedDate = null;
+  renderCalendar(); renderEvents();
+}
+
+function calSelectDay(dateKey) {
+  calSelectedDate = calSelectedDate === dateKey ? null : dateKey;
+  renderCalendar(); renderEvents();
+}
+
+function calClearFilter() {
+  calSelectedDate = null;
+  renderCalendar(); renderEvents();
+}
+
+function calGoToday() {
+  const t = today();
+  calYear = t.getFullYear(); calMonth = t.getMonth();
+  calSelectedDate = null;
+  renderCalendar(); renderEvents();
+}
+
+function toggleCalendar() {
+  const w   = document.getElementById('cal-widget');
+  const btn = document.getElementById('cal-toggle-btn');
+  const open = w.classList.toggle('open');
+  btn.style.color       = open ? 'var(--amber)' : '';
+  btn.style.borderColor = open ? 'var(--amber)'  : '';
+  btn.style.background  = open ? 'var(--amber-dim)' : '';
+  if (open) renderCalendar();
+}
+
+/* ===== DYNAMIC CATEGORY RENDER ===== */
+function renderCatPicker(selectedKey) {
+  const picker = document.getElementById('cat-picker');
+  if (!picker) return;
+  picker.innerHTML = Object.entries(categories).map(([key, c]) =>
+    `<span class="cat-chip${selectedKey === key ? ' selected' : ''}" data-cat="${key}" onclick="selectCat(this)"
+      style="${selectedKey === key ? `border-color:${c.color};color:${c.color}` : ''}">
+      ${c.emoji} ${c.name}
+    </span>`
+  ).join('');
+}
+
+function renderCatFilterBar() {
+  const bar = document.getElementById('cat-filter-bar');
+  if (!bar) return;
+  bar.innerHTML = `<button class="cat-filter-btn${activeCatFilter==='all'?' active':''}" data-cat="all" onclick="setCatFilter(this,'all')">Все</button>` +
+    Object.entries(categories).map(([key, c]) =>
+      `<button class="cat-filter-btn${activeCatFilter===key?' active':''}" data-cat="${key}" onclick="setCatFilter(this,'${key}')">${c.emoji} ${c.name}</button>`
+    ).join('');
+}
+
+/* ===== CATEGORY MANAGER ===== */
+let archiveOpen = false;
+
+function openCatManager() {
+  renderCatMgrList();
+  document.getElementById('cat-modal-overlay').classList.add('open');
+}
+function closeCatManager() {
+  document.getElementById('cat-modal-overlay').classList.remove('open');
+  renderCatFilterBar();
+  renderEvents();
+}
+function handleCatOverlayClick(e) {
+  if (e.target.id === 'cat-modal-overlay') closeCatManager();
+}
+
+function renderCatMgrList() {
+  const list = document.getElementById('cat-mgr-list');
+  const entries = Object.entries(categories);
+  if (!entries.length) { list.innerHTML = `<p style="color:var(--text3);font-size:13px">Нет категорий</p>`; return; }
+  list.innerHTML = entries.map(([key, c]) => `
+    <div class="cat-mgr-item">
+      <span class="cat-mgr-emoji">${c.emoji}</span>
+      <span class="cat-mgr-dot" style="background:${c.color}"></span>
+      <span class="cat-mgr-name">${escapeHtml(c.name)}</span>
+      <button class="cat-mgr-del" onclick="deleteCategory('${key}')" title="Удалить">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <line x1="3" y1="3" x2="13" y2="13"/><line x1="13" y1="3" x2="3" y2="13"/>
+        </svg>
+      </button>
+    </div>`).join('');
+}
+
+function addCategory() {
+  const emoji = document.getElementById('new-cat-emoji').value.trim() || '🏷';
+  const name  = document.getElementById('new-cat-name').value.trim();
+  const color = document.getElementById('new-cat-color').value;
+  if (!name) { document.getElementById('new-cat-name').focus(); return; }
+  const key = 'cat_' + Date.now().toString(36);
+  categories[key] = { emoji, name, color };
+  saveCategories();
+  document.getElementById('new-cat-emoji').value = '';
+  document.getElementById('new-cat-name').value  = '';
+  renderCatMgrList();
+  toast(`Категория «${escapeHtml(name)}» добавлена ✓`);
+}
+
+function deleteCategory(key) {
+  if (!categories[key]) return;
+  const name = categories[key].name;
+  delete categories[key];
+  saveCategories();
+  if (activeCatFilter === key) activeCatFilter = 'all';
+  renderCatMgrList();
+  toast(`Категория «${escapeHtml(name)}» удалена`);
+}
+
+/* ===== ARCHIVE ===== */
+function toggleDone(id) {
+  const ev = events.find(e => e.id === id);
+  if (!ev) return;
+  ev.done = !ev.done;
+  saveEvents(events);
+  renderEvents();
+  toast(ev.done ? 'Перемещено в архив ✓' : 'Восстановлено из архива');
+}
+
+function toggleArchive() {
+  archiveOpen = !archiveOpen;
+  const toggle = document.getElementById('arch-toggle');
+  const body   = document.getElementById('arch-body');
+  if (toggle) toggle.classList.toggle('open', archiveOpen);
+  if (body)   body.classList.toggle('open', archiveOpen);
+}
+
+/* ===== RENDER ===== */
+function renderEvents() {
+  const container = document.getElementById('events-container');
+  const sortBar   = document.getElementById('sort-bar');
+  const filterBar = document.getElementById('cat-filter-bar');
+
+  if (events.length === 0) {
+    sortBar.style.display  = 'none';
+    filterBar.style.display = 'none';
+    container.innerHTML = `
+      <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+          <rect x="6" y="10" width="36" height="32" rx="4"/><line x1="16" y1="6" x2="16" y2="14"/>
+          <line x1="32" y1="6" x2="32" y2="14"/><line x1="6" y1="20" x2="42" y2="20"/>
+          <line x1="16" y1="30" x2="32" y2="30"/><line x1="24" y1="26" x2="24" y2="34"/>
+        </svg>
+        <p>Пока нет событий.<br>Нажмите «Добавить событие» чтобы начать.</p>
+      </div>`;
+    return;
+  }
+
+  sortBar.style.display    = 'flex';
+  filterBar.style.display  = 'flex';
+  renderCatFilterBar();
+
+  let arr = sortedEvents();
+  if (activeCatFilter !== 'all') arr = arr.filter(e => e.category === activeCatFilter);
+
+  if (calSelectedDate) {
+    const [sy, sm, sd] = calSelectedDate.split('-').map(Number);
+    arr = arr.filter(ev => {
+      const dt = parseDate(ev.date);
+      if (ev.type === 'once') return dt.getFullYear() === sy && dt.getMonth() === sm - 1 && dt.getDate() === sd;
+      return dt.getMonth() === sm - 1 && dt.getDate() === sd;
+    });
+  }
+
+  // Разделяем активные и архивные
+  const active = arr.filter(e => !e.done);
+  const done   = arr.filter(e => e.done);
+
+  let html = '';
+
+  if (currentSort === 'closest') {
+    if (active.length) {
+      html += `<div class="section"><div class="events-grid">`;
+      active.forEach(e => html += cardHTML(e));
+      html += `</div></div>`;
+    }
+  } else {
+    const future   = active.filter(e => diffDays(e.date) > 0);
+    const past     = active.filter(e => diffDays(e.date) < 0);
+    const todayEvt = active.filter(e => diffDays(e.date) === 0);
+
+    if (todayEvt.length) {
+      html += `<div class="section"><div class="section-label">Сегодня 🎉</div><div class="events-grid">`;
+      todayEvt.forEach(e => html += cardHTML(e)); html += `</div></div>`;
+    }
+    if (future.length) {
+      html += `<div class="section"><div class="section-label">Предстоящие события</div><div class="events-grid">`;
+      future.forEach(e => html += cardHTML(e)); html += `</div></div>`;
+    }
+    if (past.length) {
+      html += `<div class="section"><div class="section-label">Прошедшие события</div><div class="events-grid">`;
+      past.forEach(e => html += cardHTML(e)); html += `</div></div>`;
+    }
+  }
+
+  if (!active.length && !done.length) {
+    html = `<p style="color:var(--text3);font-size:13px;text-align:center;padding:2rem 0">Нет событий в этой категории</p>`;
+  }
+
+  // Архив выполненных
+  if (done.length) {
+    html += `
+      <div class="archive-toggle${archiveOpen?' open':''}" id="arch-toggle" onclick="toggleArchive()">
+        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <polyline points="3,4 6,8 9,4"/>
+        </svg>
+        Архив выполненных · ${done.length}
+      </div>
+      <div class="archive-body${archiveOpen?' open':''}" id="arch-body">
+        <div class="events-grid">
+          ${done.map(e => cardHTML(e)).join('')}
+        </div>
+      </div>`;
+  }
+
+  container.innerHTML = html;
+}
+
+/* ===== DURATION CALC ===== */
+function calcDuration(dateStr) {
+  const t = today();
+  const e = parseDate(dateStr);
+  if (t.getTime() === e.getTime()) return { years:0, months:0, days:0, direction:'today' };
+
+  const future = e > t;
+  const [from, to] = future ? [t, e] : [e, t];
+
+  let years  = to.getFullYear() - from.getFullYear();
+  let months = to.getMonth()    - from.getMonth();
+  let days   = to.getDate()     - from.getDate();
+
+  if (days < 0) {
+    months--;
+    days += new Date(to.getFullYear(), to.getMonth(), 0).getDate();
+  }
+  if (months < 0) { years--; months += 12; }
+
+  return { years, months, days, direction: future ? 'future' : 'past' };
+}
+
+/* Длительность между двумя Date-объектами */
+function calcDurationBetween(from, to) {
+  let years  = to.getFullYear() - from.getFullYear();
+  let months = to.getMonth()    - from.getMonth();
+  let days   = to.getDate()     - from.getDate();
+  if (days < 0)   { months--; days += new Date(to.getFullYear(), to.getMonth(), 0).getDate(); }
+  if (months < 0) { years--; months += 12; }
+  return { years, months, days };
+}
+
+/* Ежегодная логика: прошло с реальной даты / осталось до следующего вхождения */
+function calcAnnual(dateStr) {
+  const t      = today();
+  const parsed = parseDate(dateStr);
+  if (t.getTime() === parsed.getTime()) return { isToday: true };
+
+  const mm = parsed.getMonth(), dd = parsed.getDate();
+
+  // ближайшее будущее вхождение этого дня/месяца
+  let futureDate = new Date(t.getFullYear(), mm, dd);
+  if (futureDate <= t) futureDate = new Date(t.getFullYear() + 1, mm, dd);
+
+  return {
+    isToday:   false,
+    passed:    calcDurationBetween(parsed, t),       // с реальной даты события
+    remaining: calcDurationBetween(t, futureDate)    // до следующего вхождения
+  };
+}
+
+/* Форматирует {years, months, days} в строку с <strong> */
+function fmtParts(d) {
+  const p = [];
+  if (d.years  > 0) p.push(`<strong>${d.years}</strong>&thinsp;${pluralYears(d.years)}`);
+  if (d.months > 0) p.push(`<strong>${d.months}</strong>&thinsp;мес.`);
+  if (d.days   > 0 || p.length === 0) p.push(`<strong>${d.days}</strong>&thinsp;${pluralDays(d.days)}`);
+  return p.join(' ');
+}
+
+function formatDuration(dur) {
+  if (dur.direction === 'today') return { line1: 'сегодня', line2: '' };
+
+  const parts = [];
+  if (dur.years  > 0) parts.push(`<strong>${dur.years}</strong>&thinsp;${pluralYears(dur.years)}`);
+  if (dur.months > 0) parts.push(`<strong>${dur.months}</strong>&thinsp;мес.`);
+  if (dur.days   > 0 || parts.length === 0) parts.push(`<strong>${dur.days}</strong>&thinsp;${pluralDays(dur.days)}`);
+
+  const prefix = dur.direction === 'future' ? 'осталось' : 'прошло';
+  return { line1: prefix, line2: parts.join('<span class="dur-sep">·</span>') };
+}
+
+function pluralYears(n) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'год';
+  if ([2,3,4].includes(m10) && ![12,13,14].includes(m100)) return 'года';
+  return 'лет';
+}
+
+function pluralMonths(n) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'месяц';
+  if ([2,3,4].includes(m10) && ![12,13,14].includes(m100)) return 'месяца';
+  return 'месяцев';
+}
+
+function pluralDays(n) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return 'день';
+  if ([2,3,4].includes(m10) && ![12,13,14].includes(m100)) return 'дня';
+  return 'дней';
+}
+
+function cardHTML(ev) {
+  const dur = calcDuration(ev.date);
+  let cardClass;
+  if      (dur.direction === 'today')  cardClass = 'today-card';
+  else if (dur.direction === 'future') cardClass = 'future';
+  else                                  cardClass = 'past';
+
+  // Border color: custom > category > default
+  const cat = ev.category ? categories[ev.category] : null;
+  const borderColor = ev.color || cat?.color || null;
+  const borderStyle = borderColor ? `style="border-left-color:${borderColor}"` : '';
+
+  // Category tag
+  const catTag = cat
+    ? `<span class="card-tag" style="background:${cat.color}22;color:${cat.color}">${cat.emoji} ${cat.name}</span>`
+    : '';
+
+  // Bell icon
+  const bell = ev.reminder
+    ? `<span class="reminder-icon" title="За ${ev.reminderDays.join(', ')} дн.">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+          <path d="M8 2a5 5 0 0 1 5 5v2.5l1 1.5H2l1-1.5V7a5 5 0 0 1 5-5z"/>
+          <line x1="8" y1="14" x2="8" y2="15"/><line x1="6.5" y1="15" x2="9.5" y2="15"/>
+        </svg>
+      </span>`
+    : '';
+
+  // Row 2: прошло + осталось
+  const ann = calcAnnual(ev.date);
+  let row2;
+  if (ann.isToday) {
+    row2 = `<strong style="color:var(--teal)">сегодня 🎉</strong>`;
+  } else if (ev.type === 'once') {
+    const dur = calcDuration(ev.date);
+    if (dur.direction === 'future') {
+      row2 = `<span class="lbl-remaining">Осталось:</span> ${fmtParts(dur)}`;
+    } else {
+      row2 = `<span class="lbl-passed">Прошло:</span> ${fmtParts(dur)}`;
+    }
+  } else {
+    row2 = `<span class="lbl-passed">Прошло:</span> ${fmtParts(ann.passed)}<span class="cnt-sep">&nbsp;·&nbsp;</span><span class="lbl-remaining">Осталось:</span> ${fmtParts(ann.remaining)}`;
+  }
+
+  // Row 3: note
+  const row3 = ev.note
+    ? `<div class="card-row3">📝 ${escapeHtml(ev.note)}</div>`
+    : '';
+
+  // Done button (only for once-type events)
+  const doneBtn = ev.type === 'once'
+    ? `<button class="icon-btn${ev.done ? ' done-btn' : ''}" onclick="toggleDone('${ev.id}')" title="${ev.done ? 'Восстановить' : 'Отметить выполненным'}" style="${ev.done ? 'color:var(--teal)' : ''}">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="2,8 6,12 14,4"/>
+        </svg>
+      </button>`
+    : '';
+
+  return `
+    <div class="event-card ${cardClass}${ev.done?' done':''}" id="card-${ev.id}" ${borderStyle}>
+      <div class="card-row1">
+        <span class="event-name">${escapeHtml(ev.name)}</span>
+        ${catTag}
+        <span class="event-date">${formatDateRu(ev.date)}</span>
+        ${bell}
+        <div class="card-actions">
+          ${doneBtn}
+          <button class="icon-btn" onclick="shareEvent('${ev.id}')" title="Поделиться">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="3" r="1.5"/><circle cx="12" cy="13" r="1.5"/><circle cx="3" cy="8" r="1.5"/>
+              <line x1="4.4" y1="7.2" x2="10.6" y2="4"/><line x1="4.4" y1="8.8" x2="10.6" y2="12"/>
+            </svg>
+          </button>
+          <button class="icon-btn" onclick="exportICS('${ev.id}')" title="Добавить в календарь (.ics)">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <rect x="2" y="3" width="12" height="11" rx="2"/>
+              <line x1="5" y1="1" x2="5" y2="5"/><line x1="11" y1="1" x2="11" y2="5"/>
+              <line x1="2" y1="7" x2="14" y2="7"/>
+              <line x1="8" y1="10" x2="8" y2="13"/><line x1="6.5" y1="11.5" x2="9.5" y2="11.5"/>
+            </svg>
+          </button>
+          <button class="icon-btn" onclick="openEditModal('${ev.id}')" title="Редактировать">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11.5 2.5l2 2L5 13H3v-2L11.5 2.5z"/>
+            </svg>
+          </button>
+          <button class="icon-btn delete" onclick="deleteEvent('${ev.id}')" title="Удалить">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+              <polyline points="2,4 14,4"/><path d="M6 4V2h4v2"/><path d="M3 4l1 9a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-9"/>
+              <line x1="6.5" y1="7" x2="6.5" y2="11"/><line x1="9.5" y1="7" x2="9.5" y2="11"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="card-row2">${row2}</div>
+      ${row3}
+    </div>`;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ===== MODAL ===== */
+/* ===== CATEGORY & COLOR PICKERS ===== */
+function selectCat(el) {
+  const cat = el.dataset.cat;
+  const wasSelected = el.classList.contains('selected');
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
+  if (wasSelected) { selectedCat = null; return; }
+  el.classList.add('selected');
+  selectedCat = cat;
+  const catColor = categories[cat]?.color;
+  if (catColor && !selectedColor) {
+    selectedColor = catColor;
+    highlightSwatch(catColor);
+  }
+}
+
+function selectSwatch(el) {
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedColor = el.dataset.color;
+}
+
+function onCustomColor(input) {
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  selectedColor = input.value;
+}
+
+function highlightSwatch(color) {
+  document.querySelectorAll('.color-swatch').forEach(s => {
+    s.classList.toggle('selected', s.dataset.color === color);
+  });
+}
+
+function setEventType(type) {
+  selectedType = type;
+  document.getElementById('type-annual').classList.toggle('active', type === 'annual');
+  document.getElementById('type-once').classList.toggle('active',   type === 'once');
+}
+
+function resetCatColor() {
+  selectedCat   = null;
+  selectedColor = null;
+  document.querySelectorAll('.cat-chip').forEach(c => c.classList.remove('selected'));
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  document.getElementById('inp-color-custom').value = '#ffffff';
+}
+
+function setCatFilter(btn, cat) {
+  document.querySelectorAll('.cat-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeCatFilter = cat;
+  renderEvents();
+}
+
+function openModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Новое событие';
+  document.getElementById('inp-name').value = '';
+  document.getElementById('inp-date').value = '';
+  document.getElementById('inp-note').value = '';
+  resetReminder();
+  resetCatColor();
+  setEventType('annual');
+  renderCatPicker(null);
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('inp-name').focus(), 50);
+}
+
+function openEditModal(id) {
+  const ev = events.find(e => e.id === id);
+  if (!ev) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = 'Редактировать событие';
+  document.getElementById('inp-name').value = ev.name;
+  document.getElementById('inp-date').value = ev.date;
+  document.getElementById('inp-note').value = ev.note || '';
+  resetReminder();
+  resetCatColor();
+  setEventType(ev.type || 'annual');
+  renderCatPicker(ev.category || null);
+
+  if (ev.category) {
+    selectedCat = ev.category;
+    const catColor = categories[ev.category]?.color;
+    if (catColor && !ev.color) { selectedColor = catColor; highlightSwatch(catColor); }
+  }
+
+  if (ev.color) {
+    selectedColor = ev.color;
+    const swatch = document.querySelector(`.color-swatch[data-color="${ev.color}"]`);
+    if (swatch) swatch.classList.add('selected');
+    else document.getElementById('inp-color-custom').value = ev.color;
+  }
+
+  if (ev.reminder) {
+    reminderActive = true;
+    document.getElementById('reminder-toggle').classList.add('active');
+    document.getElementById('reminder-chips').classList.add('visible');
+    document.querySelectorAll('.day-chip').forEach(c => {
+      c.classList.toggle('selected', ev.reminderDays.includes(Number(c.dataset.days)));
+    });
+  }
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function handleOverlayClick(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+}
+
+function resetReminder() {
+  reminderActive = false;
+  document.getElementById('reminder-toggle').classList.remove('active');
+  document.getElementById('reminder-chips').classList.remove('visible');
+  document.querySelectorAll('.day-chip').forEach((c,i) => c.classList.toggle('selected', i===0));
+}
+
+function toggleReminder() {
+  reminderActive = !reminderActive;
+  document.getElementById('reminder-toggle').classList.toggle('active', reminderActive);
+  document.getElementById('reminder-chips').classList.toggle('visible', reminderActive);
+  if (reminderActive) requestNotificationPermission();
+}
+
+function toggleChip(el) {
+  el.classList.toggle('selected');
+}
+
+/* ===== SAVE / DELETE ===== */
+function saveEvent() {
+  const name = document.getElementById('inp-name').value.trim();
+  const date = document.getElementById('inp-date').value;
+  const note = document.getElementById('inp-note').value.trim();
+
+  if (!name) { shake('inp-name'); return; }
+  if (!date)  { shake('inp-date'); return; }
+
+  const reminderDays = reminderActive
+    ? Array.from(document.querySelectorAll('.day-chip.selected')).map(c => Number(c.dataset.days))
+    : [];
+
+  const ev = {
+    id: editingId || Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    name, date, note,
+    type:     selectedType,
+    category: selectedCat || null,
+    color:    selectedColor || null,
+    reminder: reminderActive && reminderDays.length > 0,
+    reminderDays,
+    createdAt: editingId ? (events.find(e=>e.id===editingId)?.createdAt || Date.now()) : Date.now()
+  };
+
+  if (editingId) {
+    const idx = events.findIndex(e => e.id === editingId);
+    events[idx] = ev;
+  } else {
+    events.push(ev);
+  }
+
+  save();
+  renderEvents();
+  closeModal();
+  toast(editingId ? `«${name}» обновлено` : `«${name}» добавлено`);
+  scheduleReminders();
+}
+
+function deleteEvent(id) {
+  const ev = events.find(e => e.id === id);
+  if (!ev) return;
+  if (!confirm(`Удалить «${ev.name}»?`)) return;
+  events = events.filter(e => e.id !== id);
+  save();
+  renderEvents();
+  toast(`«${ev.name}» удалено`);
+}
+
+function save() {
+  localStorage.setItem('countdown_events', JSON.stringify(events));
+}
+
+function shake(id) {
+  const el = document.getElementById(id);
+  el.style.borderColor = 'var(--red)';
+  el.style.animation = 'shake 0.3s ease';
+  setTimeout(() => { el.style.animation = ''; el.style.borderColor = ''; }, 400);
+}
+
+/* ===== TOAST ===== */
+function toast(msg, duration=3000) {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.innerHTML = msg;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(20px)'; t.style.transition='all 0.3s';
+    setTimeout(() => t.remove(), 300);
+  }, duration);
+}
+
+/* ===== NOTIFICATIONS ===== */
+function requestNotificationPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    Notification.requestPermission().then(p => {
+      if (p === 'granted') toast('Уведомления включены ✓');
+      else toast('Уведомления отклонены — напоминания будут показаны внутри приложения');
+    });
+  }
+}
+
+function scheduleReminders() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const now = today();
+  events.forEach(ev => {
+    if (!ev.reminder) return;
+    ev.reminderDays.forEach(days => {
+      const target = new Date(parseDate(ev.date));
+      target.setDate(target.getDate() - days);
+      const msUntil = target - now;
+      if (msUntil >= 0 && msUntil < 86400000 * 2) {
+        setTimeout(() => {
+          new Notification(`Напоминание: ${ev.name}`, {
+            body: days === 0 ? 'Событие сегодня!' : `До события осталось ${days} ${pluralDays(days)}`,
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><text y="28" font-size="28">📅</text></svg>'
+          });
+        }, msUntil > 0 ? msUntil : 0);
+      }
+    });
+  });
+}
+
+function checkDailyReminders() {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const t = today();
+  events.forEach(ev => {
+    if (!ev.reminder) return;
+    const diff = diffDays(ev.date);
+    ev.reminderDays.forEach(days => {
+      if (diff === days) {
+        setTimeout(() => {
+          new Notification(`Напоминание: ${ev.name}`, {
+            body: days === 0 ? 'Событие сегодня!' : `До события осталось ${days} ${pluralDays(days)}`,
+          });
+        }, 500);
+        if (days === 0 || days === 1) {
+          toast(`<strong>🔔 ${ev.name}</strong><br>${days===0?'Событие сегодня!':'Событие завтра!'}`);
+        }
+      }
+    });
+  });
+}
+
+/* ===== EXPORT ICS ===== */
+function exportICS(id) {
+  const ev = events.find(e => e.id === id);
+  if (!ev) return;
+
+  const [y, m, d] = ev.date.split('-').map(Number);
+  const dtStart = `${String(y).padStart(4,'0')}${String(m).padStart(2,'0')}${String(d).padStart(2,'0')}`;
+  // DTEND = next day
+  const end = new Date(y, m - 1, d + 1);
+  const dtEnd = `${end.getFullYear()}${String(end.getMonth()+1).padStart(2,'0')}${String(end.getDate()).padStart(2,'0')}`;
+
+  const rrule  = (ev.type !== 'once') ? '\r\nRRULE:FREQ=YEARLY' : '';
+  const desc   = ev.note ? `DESCRIPTION:${ev.note.replace(/\n/g,' ')}\r\n` : '';
+  const cat    = ev.category ? categories[ev.category]?.name : '';
+  const catStr = cat ? `CATEGORIES:${cat}\r\n` : '';
+  const uid    = `${ev.id}@countdown-app`;
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Обратный отсчёт//RU',
+    'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT',
+    `UID:${uid}`,
+    `DTSTART;VALUE=DATE:${dtStart}`,
+    `DTEND;VALUE=DATE:${dtEnd}`,
+    `SUMMARY:${ev.name}${rrule}`,
+    `${desc}${catStr}END:VEVENT`,
+    'END:VCALENDAR',
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `${ev.name.replace(/[^а-яёa-z0-9]/gi,'_')}.ics`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`Добавлен в календарь: <strong>${escapeHtml(ev.name)}</strong> ✓`);
+}
+
+/* ===== SHARE EVENT ===== */
+async function shareEvent(id) {
+  const ev = events.find(e => e.id === id);
+  if (!ev) return;
+
+  const ann = calcAnnual(ev.date);
+  const cat = ev.category ? categories[ev.category] : null;
+
+  let timeText;
+  if (ann.isToday) {
+    timeText = 'Сегодня! 🎉';
+  } else if (ev.type === 'once') {
+    const dur = calcDuration(ev.date);
+    const val = fmtPartsPlain(dur);
+    timeText = dur.direction === 'future' ? `Осталось: ${val}` : `Прошло: ${val}`;
+  } else {
+    timeText = `Прошло: ${fmtPartsPlain(ann.passed)} · Осталось: ${fmtPartsPlain(ann.remaining)}`;
+  }
+
+  const emoji  = cat ? cat.emoji + ' ' : '📅 ';
+  const catStr = cat ? ` (${cat.name})` : '';
+  const note   = ev.note ? `\n📝 ${ev.note}` : '';
+  const text   = `${emoji}${ev.name}${catStr}\n📆 ${formatDateRu(ev.date)}\n${timeText}${note}`;
+
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: ev.name, text });
+    } else {
+      await navigator.clipboard.writeText(text);
+      toast('Скопировано в буфер обмена ✓');
+    }
+  } catch {
+    // fallback: textarea copy
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('Скопировано в буфер обмена ✓');
+  }
+}
+
+/* Текстовая версия fmtParts без HTML тегов */
+function fmtPartsPlain(d) {
+  const p = [];
+  if (d.years  > 0) p.push(`${d.years} ${pluralYears(d.years)}`);
+  if (d.months > 0) p.push(`${d.months} мес.`);
+  if (d.days   > 0 || p.length === 0) p.push(`${d.days} ${pluralDays(d.days)}`);
+  return p.join(' ');
+}
+
+/* ===== IMPORT DATA ===== */
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const incoming = Array.isArray(data) ? data : (data.events || []);
+      if (!incoming.length) { toast('Файл пуст или неверный формат'); return; }
+
+      const existing = loadEvents();
+      const existingIds = new Set(existing.map(ev => ev.id));
+
+      // Merge: пропускаем дубли по id, добавляем новые
+      let added = 0;
+      incoming.forEach(ev => {
+        if (!ev.name || !ev.date) return;
+        const id = ev.id || `${Date.now()}-${Math.random().toString(36).slice(2,7)}`;
+        if (existingIds.has(id)) return;
+        existing.push({
+          id,
+          name:        ev.name,
+          date:        ev.date,
+          note:        ev.note || '',
+          reminder:    ev.reminder || false,
+          reminderDays: ev.reminderDays || [],
+          addedAt:     ev.addedAt || new Date().toISOString()
+        });
+        added++;
+      });
+
+      saveEvents(existing);
+      renderEvents();
+      toast(`Импортировано: <strong>${added}</strong> событий ✓`);
+    } catch {
+      toast('Ошибка чтения файла. Проверьте формат JSON.');
+    } finally {
+      event.target.value = ''; // сброс input для повторной загрузки
+    }
+  };
+  reader.readAsText(file);
+}
+
+function downloadData() {
+  const events = loadEvents();
+  if (!events.length) { toast('Нет событий для экспорта'); return; }
+
+  const data = {
+    exported: new Date().toISOString().slice(0, 10),
+    events: events.map(ev => ({
+      name:        ev.name,
+      date:        ev.date,
+      note:        ev.note || '',
+      reminder:    ev.reminder,
+      reminderDays: ev.reminderDays || []
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = `countdown-${data.exported}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast(`Данные (${events.length} событий) скачаны ✓`);
+}
+
+/* ===== INIT ===== */
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+// Add shake animation
+const style = document.createElement('style');
+style.textContent = `@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }`;
+document.head.appendChild(style);
+
+updateHeaderDate();
+renderEvents();
+checkDailyReminders();
+scheduleReminders();
+
+// Update every minute
+setInterval(() => {
+  updateHeaderDate();
+  renderEvents();
+}, 60000);
+
+// Register service worker (PWA offline support)
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+</script>
+<!-- CATEGORIES MANAGER MODAL -->
+<div class="overlay" id="cat-modal-overlay" onclick="handleCatOverlayClick(event)">
+  <div class="modal">
+    <h2>Управление категориями</h2>
+    <div class="cat-mgr-list" id="cat-mgr-list"><!-- rendered by JS --></div>
+    <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+    <p style="font-size:12px;color:var(--text3);margin-bottom:8px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase">Добавить категорию</p>
+    <div class="add-cat-row">
+      <input class="inp-emoji"   id="new-cat-emoji" type="text" placeholder="🏷" maxlength="2">
+      <input class="inp-catname" id="new-cat-name"  type="text" placeholder="Название" maxlength="30">
+      <input class="inp-cat-color" id="new-cat-color" type="color" value="#60a5fa">
+    </div>
+    <button class="btn-add-cat" onclick="addCategory()">+ Добавить</button>
+    <div style="display:flex;gap:10px;margin-top:16px">
+      <button class="btn-save" style="flex:1" onclick="closeCatManager()">Готово</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
