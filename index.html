@@ -1710,6 +1710,15 @@ function deleteEvent(id) {
   toast(`«${ev.name}» удалено`);
 }
 
+function loadEvents() {
+  return JSON.parse(localStorage.getItem('countdown_events') || '[]');
+}
+
+function saveEvents(arr) {
+  events = arr;
+  localStorage.setItem('countdown_events', JSON.stringify(arr));
+}
+
 function save() {
   localStorage.setItem('countdown_events', JSON.stringify(events));
 }
@@ -1890,10 +1899,9 @@ function importData(event) {
       const incoming = Array.isArray(data) ? data : (data.events || []);
       if (!incoming.length) { toast('Файл пуст или неверный формат'); return; }
 
-      const existing = loadEvents();
+      const existing   = loadEvents();
       const existingIds = new Set(existing.map(ev => ev.id));
 
-      // Merge: пропускаем дубли по id, добавляем новые
       let added = 0;
       incoming.forEach(ev => {
         if (!ev.name || !ev.date) return;
@@ -1901,12 +1909,16 @@ function importData(event) {
         if (existingIds.has(id)) return;
         existing.push({
           id,
-          name:        ev.name,
-          date:        ev.date,
-          note:        ev.note || '',
-          reminder:    ev.reminder || false,
+          name:         ev.name,
+          date:         ev.date,
+          note:         ev.note || '',
+          type:         ev.type || 'annual',
+          category:     ev.category || null,
+          color:        ev.color || null,
+          done:         ev.done || false,
+          reminder:     ev.reminder || false,
           reminderDays: ev.reminderDays || [],
-          addedAt:     ev.addedAt || new Date().toISOString()
+          createdAt:    ev.createdAt || Date.now()
         });
         added++;
       });
@@ -1914,27 +1926,34 @@ function importData(event) {
       saveEvents(existing);
       renderEvents();
       toast(`Импортировано: <strong>${added}</strong> событий ✓`);
-    } catch {
+    } catch (err) {
       toast('Ошибка чтения файла. Проверьте формат JSON.');
+      console.error(err);
     } finally {
-      event.target.value = ''; // сброс input для повторной загрузки
+      event.target.value = '';
     }
   };
   reader.readAsText(file);
 }
 
 function downloadData() {
-  const events = loadEvents();
-  if (!events.length) { toast('Нет событий для экспорта'); return; }
+  const evs = loadEvents();
+  if (!evs.length) { toast('Нет событий для экспорта'); return; }
 
   const data = {
     exported: new Date().toISOString().slice(0, 10),
-    events: events.map(ev => ({
+    events: evs.map(ev => ({
+      id:          ev.id,
       name:        ev.name,
       date:        ev.date,
       note:        ev.note || '',
-      reminder:    ev.reminder,
-      reminderDays: ev.reminderDays || []
+      type:        ev.type || 'annual',
+      category:    ev.category || null,
+      color:       ev.color || null,
+      done:        ev.done || false,
+      reminder:    ev.reminder || false,
+      reminderDays: ev.reminderDays || [],
+      createdAt:   ev.createdAt || null
     }))
   };
 
@@ -1947,7 +1966,7 @@ function downloadData() {
   a.click();
   document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  toast(`Данные (${events.length} событий) скачаны ✓`);
+  toast(`Данные (${evs.length} событий) скачаны ✓`);
 }
 
 /* ===== INIT ===== */
