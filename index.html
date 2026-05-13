@@ -703,27 +703,44 @@
   }
   .cal-filter-hint:hover { text-decoration: underline; }
 
+  /* --- TOOLBAR ROW --- */
+  .toolbar-row {
+    display: flex; gap: 6px; margin-top: 8px;
+  }
+  .tool-btn {
+    flex: 1;
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 8px 4px;
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--bg2); color: var(--text3);
+    cursor: pointer; font-family: 'Manrope', sans-serif;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.02em;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .tool-btn svg { width: 15px; height: 15px; }
+  .tool-btn:hover { color: var(--text); border-color: var(--amber); background: var(--amber-dim); }
+
   /* --- SORT BAR --- */
   .sort-bar {
     display: flex;
     gap: 6px;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
+    margin-bottom: 10px;
   }
 
   .sort-btn {
-    padding: 5px 12px;
-    border-radius: 20px;
+    flex: 1;
+    padding: 7px 4px;
+    border-radius: var(--radius-sm);
     border: 1px solid var(--border);
-    background: transparent;
-    color: var(--text2);
-    font-size: 12px;
+    background: var(--bg2);
+    color: var(--text3);
+    font-size: 12px; font-weight: 600;
     font-family: 'Manrope', sans-serif;
-    cursor: pointer;
+    cursor: pointer; text-align: center;
     transition: all 0.15s;
   }
 
-  .sort-btn:hover { border-color: var(--border2); color: var(--text); }
+  .sort-btn:hover  { background: var(--bg3); color: var(--text2); }
   .sort-btn.active { background: var(--amber-dim); border-color: var(--amber); color: var(--amber); }
 
   /* --- RESPONSIVE --- */
@@ -773,11 +790,11 @@
   .archive-body.open { display: block; }
 
   /* --- CATEGORY EMOJI ON CARD --- */
-  .card-cat-emoji {
-    font-size: 13px;
-    flex-shrink: 0;
+  .cat-emoji-inline {
+    font-size: 12px;
+    margin-left: 4px;
+    vertical-align: middle;
     line-height: 1;
-    margin-left: 2px;
   }
 
   /* --- ROW2: Прошло слева, Через правее центра --- */
@@ -865,30 +882,27 @@
 </header>
 
 <main>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-    <button class="add-btn" onclick="openModal()">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
-      </svg>
-      Добавить событие
-    </button>
-    <button class="dl-btn" onclick="downloadData()" title="Скачать данные (JSON)">
+  <button class="add-btn" onclick="openModal()">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
+    </svg>
+    Добавить событие
+  </button>
+
+  <div class="toolbar-row">
+    <button class="tool-btn" onclick="downloadData()" title="Экспорт данных">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="8" y1="2" x2="8" y2="11"/>
-        <polyline points="5,8 8,11 11,8"/>
-        <path d="M3 14h10"/>
+        <line x1="8" y1="2" x2="8" y2="11"/><polyline points="5,8 8,11 11,8"/><path d="M3 14h10"/>
       </svg>
       Экспорт
     </button>
-    <button class="dl-btn" onclick="document.getElementById('import-file').click()" title="Загрузить данные (JSON)">
+    <button class="tool-btn" onclick="document.getElementById('import-file').click()" title="Импорт данных">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <line x1="8" y1="11" x2="8" y2="2"/>
-        <polyline points="5,5 8,2 11,5"/>
-        <path d="M3 14h10"/>
+        <line x1="8" y1="11" x2="8" y2="2"/><polyline points="5,5 8,2 11,5"/><path d="M3 14h10"/>
       </svg>
       Импорт
     </button>
-    <button class="dl-btn" onclick="toggleCalendar()" id="cal-toggle-btn" title="Мини-календарь">
+    <button class="tool-btn" onclick="toggleCalendar()" id="cal-toggle-btn" title="Мини-календарь">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <rect x="2" y="3" width="12" height="11" rx="2"/>
         <line x1="5" y1="1" x2="5" y2="5"/><line x1="11" y1="1" x2="11" y2="5"/>
@@ -896,7 +910,7 @@
       </svg>
       Календарь
     </button>
-    <button class="dl-btn" onclick="openCatManager()" title="Управление категориями">
+    <button class="tool-btn" onclick="openCatManager()" title="Управление категориями">
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <circle cx="8" cy="8" r="2"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.5 3.5l.7.7M11.8 11.8l.7.7M11.8 4.2l-.7.7M4.2 11.8l-.7.7"/>
       </svg>
@@ -935,7 +949,7 @@
 
     <div class="field">
       <label>Название *</label>
-      <input type="text" id="inp-name" placeholder="Например: День рождения Влада" maxlength="80">
+      <input type="text" id="inp-name" placeholder="Например: День рождения Маши" maxlength="80">
     </div>
 
     <div class="field">
@@ -1232,10 +1246,24 @@ function renderCatPicker(selectedKey) {
 function renderCatFilterBar() {
   const bar = document.getElementById('cat-filter-bar');
   if (!bar) return;
-  bar.innerHTML = `<button class="cat-filter-btn${activeCatFilter==='all'?' active':''}" data-cat="all" onclick="setCatFilter(this,'all')">Все</button>` +
-    Object.entries(categories).map(([key, c]) =>
-      `<button class="cat-filter-btn${activeCatFilter===key?' active':''}" data-cat="${key}" onclick="setCatFilter(this,'${key}')">${c.emoji} ${c.name}</button>`
-    ).join('');
+
+  // Только категории у которых есть хотя бы одно активное событие
+  const usedCats = new Set(events.filter(e => !e.done && e.category).map(e => e.category));
+  const entries  = Object.entries(categories).filter(([key]) => usedCats.has(key));
+
+  if (entries.length === 0) {
+    bar.style.display = 'none';
+    activeCatFilter = 'all';
+    return;
+  }
+
+  bar.style.display = 'flex';
+  bar.innerHTML = entries.map(([key, c]) => {
+    const isActive = activeCatFilter === key;
+    const activeStyle = isActive ? `border-color:${c.color};color:${c.color};background:${c.color}22` : '';
+    return `<button class="cat-filter-btn${isActive ? ' active' : ''}" data-cat="${key}"
+      onclick="setCatFilter('${key}')" style="${activeStyle}">${c.emoji} ${c.name}</button>`;
+  }).join('');
 }
 
 /* ===== CATEGORY MANAGER ===== */
@@ -1511,7 +1539,7 @@ function cardHTML(ev) {
 
   // Bell icon
   const bell = ev.reminder
-    ? `<span class="reminder-icon" title="За ${ev.reminderDays.join(', ')} дн.">
+    ? `<span class="reminder-icon" title="За ${ev.reminderDays.join(', ')} д.">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
           <path d="M8 2a5 5 0 0 1 5 5v2.5l1 1.5H2l1-1.5V7a5 5 0 0 1 5-5z"/>
           <line x1="8" y1="14" x2="8" y2="15"/><line x1="6.5" y1="15" x2="9.5" y2="15"/>
@@ -1544,7 +1572,7 @@ function cardHTML(ev) {
   return `
     <div class="event-card ${cardClass}${ev.done?' done':''}" id="card-${ev.id}" ${borderStyle} onclick="openDrawer('${ev.id}')">
       <div class="card-row1">
-        <span class="event-name">${escapeHtml(ev.name)}</span>${catEmoji ? `<span class="card-cat-emoji" title="${cat?.name}">${cat?.emoji}</span>` : ''}
+        <span class="event-name">${escapeHtml(ev.name)}${cat ? `<span class="cat-emoji-inline">${cat.emoji}</span>` : ''}</span>
         <span class="event-date">${formatDateRu(ev.date)}</span>
         ${bell}
       </div>
@@ -1695,10 +1723,9 @@ function resetCatColor() {
   document.getElementById('inp-color-custom').value = '#ffffff';
 }
 
-function setCatFilter(btn, cat) {
-  document.querySelectorAll('.cat-filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  activeCatFilter = cat;
+function setCatFilter(cat) {
+  // Повторное нажатие снимает фильтр
+  activeCatFilter = (activeCatFilter === cat) ? 'all' : cat;
   renderEvents();
 }
 
