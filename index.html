@@ -485,17 +485,6 @@
   }
 
   /* Row 2: countdown line */
-  .card-row2 {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    color: var(--text2);
-    padding-left: 1px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-  }
-
   .card-row2 strong { font-weight: 600; }
   .future .card-row2 strong     { color: var(--amber); }
   .past .card-row2 strong       { color: var(--text); }
@@ -783,9 +772,30 @@
   .archive-body { display: none; padding-top: 6px; }
   .archive-body.open { display: block; }
 
-  /* --- ROW2 COLORED LABELS --- */
+  /* --- CATEGORY EMOJI ON CARD --- */
+  .card-cat-emoji {
+    font-size: 13px;
+    flex-shrink: 0;
+    line-height: 1;
+    margin-left: 2px;
+  }
+
+  /* --- ROW2: Прошло слева, Через правее центра --- */
+  .card-row2 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text2);
+    padding-left: 1px;
+    display: flex;
+    align-items: center;
+  }
+  .card-row2 > span:first-child { flex: 0 0 52%; }
+  .card-row2 > span:last-child  { flex: 0 0 48%; text-align: left; }
+
   .lbl-passed    { color: #60a5fa; }
   .lbl-remaining { color: var(--amber); }
+  .future .card-row2 .lbl-remaining strong { color: var(--amber); }
+  .past   .card-row2 .lbl-remaining strong { color: var(--amber); }
   .future .card-row2 .lbl-remaining strong { color: var(--amber); }
   .past   .card-row2 .lbl-remaining strong { color: var(--amber); }
 
@@ -1478,10 +1488,7 @@ function pluralMonths(n) {
 }
 
 function pluralDays(n) {
-  const m10 = n % 10, m100 = n % 100;
-  if (m10 === 1 && m100 !== 11) return 'день';
-  if ([2,3,4].includes(m10) && ![12,13,14].includes(m100)) return 'дня';
-  return 'дней';
+  return 'д.';
 }
 
 function cardHTML(ev) {
@@ -1496,14 +1503,14 @@ function cardHTML(ev) {
   const borderColor = ev.color || cat?.color || null;
   const borderStyle = borderColor ? `style="border-left-color:${borderColor}"` : '';
 
-  // Category tag
-  const catTag = cat
-    ? `<span class="card-tag" style="background:${cat.color}22;color:${cat.color}">${cat.emoji} ${cat.name}</span>`
+  // Category emoji (только смайл, без названия — компактно)
+  const catEmoji = cat
+    ? `<span class="card-cat-emoji" title="${cat.name}">${cat.emoji}</span>`
     : '';
 
   // Bell icon
   const bell = ev.reminder
-    ? `<span class="reminder-icon" title="За ${ev.reminderDays.join(', ')} дн.">
+    ? `<span class="reminder-icon" title="За ${ev.reminderDays.join(', ')} д.">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
           <path d="M8 2a5 5 0 0 1 5 5v2.5l1 1.5H2l1-1.5V7a5 5 0 0 1 5-5z"/>
           <line x1="8" y1="14" x2="8" y2="15"/><line x1="6.5" y1="15" x2="9.5" y2="15"/>
@@ -1511,20 +1518,20 @@ function cardHTML(ev) {
       </span>`
     : '';
 
-  // Row 2: прошло (слева) + осталось (справа)
+  // Row 2: прошло (слева) + через (правее центра)
   const ann = calcAnnual(ev.date);
   let row2;
   if (ann.isToday) {
     row2 = `<span style="color:var(--teal)"><strong>сегодня 🎉</strong></span><span></span>`;
   } else if (ev.type === 'once') {
-    const dur = calcDuration(ev.date);
-    if (dur.direction === 'future') {
-      row2 = `<span></span><span><span class="lbl-remaining">Осталось:</span> ${fmtParts(dur)}</span>`;
+    const dur2 = calcDuration(ev.date);
+    if (dur2.direction === 'future') {
+      row2 = `<span></span><span><span class="lbl-remaining">Через:</span> ${fmtParts(dur2)}</span>`;
     } else {
-      row2 = `<span><span class="lbl-passed">Прошло:</span> ${fmtParts(dur)}</span><span></span>`;
+      row2 = `<span><span class="lbl-passed">Прошло:</span> ${fmtParts(dur2)}</span><span></span>`;
     }
   } else {
-    row2 = `<span><span class="lbl-passed">Прошло:</span> ${fmtParts(ann.passed)}</span><span><span class="lbl-remaining">Осталось:</span> ${fmtParts(ann.remaining)}</span>`;
+    row2 = `<span><span class="lbl-passed">Прошло:</span> ${fmtParts(ann.passed)}</span><span><span class="lbl-remaining">Через:</span> ${fmtParts(ann.remaining)}</span>`;
   }
 
   // Row 3: note
@@ -1536,8 +1543,7 @@ function cardHTML(ev) {
   return `
     <div class="event-card ${cardClass}${ev.done?' done':''}" id="card-${ev.id}" ${borderStyle} onclick="openDrawer('${ev.id}')">
       <div class="card-row1">
-        <span class="event-name">${escapeHtml(ev.name)}</span>
-        ${catTag}
+        <span class="event-name">${escapeHtml(ev.name)}</span>${catEmoji ? `<span class="card-cat-emoji" title="${cat?.name}">${cat?.emoji}</span>` : ''}
         <span class="event-date">${formatDateRu(ev.date)}</span>
         ${bell}
       </div>
@@ -1961,9 +1967,9 @@ async function shareEvent(id) {
   } else if (ev.type === 'once') {
     const dur = calcDuration(ev.date);
     const val = fmtPartsPlain(dur);
-    timeText = dur.direction === 'future' ? `Осталось: ${val}` : `Прошло: ${val}`;
+    timeText = dur.direction === 'future' ? `Через: ${val}` : `Прошло: ${val}`;
   } else {
-    timeText = `Прошло: ${fmtPartsPlain(ann.passed)} · Осталось: ${fmtPartsPlain(ann.remaining)}`;
+    timeText = `Прошло: ${fmtPartsPlain(ann.passed)} · Через: ${fmtPartsPlain(ann.remaining)}`;
   }
 
   const emoji  = cat ? cat.emoji + ' ' : '📅 ';
