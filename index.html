@@ -440,9 +440,10 @@
     font-size: 12px;
     color: var(--text2);
     padding-left: 1px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
   }
 
   .card-row2 strong { font-weight: 600; }
@@ -1022,10 +1023,17 @@ function daysUntilNext(dateStr) {
   return Math.round((next - t) / 86400000);
 }
 
+/* Происходит ли этот день/месяц ещё в этом году */
+function isUpcomingThisYear(dateStr) {
+  const t = today();
+  const p = parseDate(dateStr);
+  return new Date(t.getFullYear(), p.getMonth(), p.getDate()) >= t;
+}
+
 function sortedEvents() {
   const arr = [...events];
   if (currentSort === 'closest') arr.sort((a, b) => daysUntilNext(a.date) - daysUntilNext(b.date));
-  else arr.reverse(); // 'added' — последние добавленные сверху
+  else arr.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)); // 'added' — самые новые сверху
   return arr;
 }
 
@@ -1289,27 +1297,22 @@ function renderEvents() {
   let html = '';
 
   if (currentSort === 'closest') {
-    if (active.length) {
-      html += `<div class="section"><div class="events-grid">`;
-      active.forEach(e => html += cardHTML(e));
-      html += `</div></div>`;
+    const upcoming = active.filter(e => isUpcomingThisYear(e.date));
+    const passed   = active.filter(e => !isUpcomingThisYear(e.date));
+
+    if (upcoming.length) {
+      html += `<div class="section"><div class="section-label">Предстоящие</div><div class="events-grid">`;
+      upcoming.forEach(e => html += cardHTML(e)); html += `</div></div>`;
+    }
+    if (passed.length) {
+      html += `<div class="section"><div class="section-label">Прошедшие в этом году</div><div class="events-grid">`;
+      passed.forEach(e => html += cardHTML(e)); html += `</div></div>`;
     }
   } else {
-    const future   = active.filter(e => diffDays(e.date) > 0);
-    const past     = active.filter(e => diffDays(e.date) < 0);
-    const todayEvt = active.filter(e => diffDays(e.date) === 0);
-
-    if (todayEvt.length) {
-      html += `<div class="section"><div class="section-label">Сегодня 🎉</div><div class="events-grid">`;
-      todayEvt.forEach(e => html += cardHTML(e)); html += `</div></div>`;
-    }
-    if (future.length) {
-      html += `<div class="section"><div class="section-label">Предстоящие события</div><div class="events-grid">`;
-      future.forEach(e => html += cardHTML(e)); html += `</div></div>`;
-    }
-    if (past.length) {
-      html += `<div class="section"><div class="section-label">Прошедшие события</div><div class="events-grid">`;
-      past.forEach(e => html += cardHTML(e)); html += `</div></div>`;
+    // Недавно добавленные — плоский список
+    if (active.length) {
+      html += `<div class="section"><div class="events-grid">`;
+      active.forEach(e => html += cardHTML(e)); html += `</div></div>`;
     }
   }
 
@@ -1456,20 +1459,20 @@ function cardHTML(ev) {
       </span>`
     : '';
 
-  // Row 2: прошло + осталось
+  // Row 2: прошло (слева) + осталось (справа)
   const ann = calcAnnual(ev.date);
   let row2;
   if (ann.isToday) {
-    row2 = `<strong style="color:var(--teal)">сегодня 🎉</strong>`;
+    row2 = `<span style="color:var(--teal)"><strong>сегодня 🎉</strong></span><span></span>`;
   } else if (ev.type === 'once') {
     const dur = calcDuration(ev.date);
     if (dur.direction === 'future') {
-      row2 = `<span class="lbl-remaining">Осталось:</span> ${fmtParts(dur)}`;
+      row2 = `<span></span><span><span class="lbl-remaining">Осталось:</span> ${fmtParts(dur)}</span>`;
     } else {
-      row2 = `<span class="lbl-passed">Прошло:</span> ${fmtParts(dur)}`;
+      row2 = `<span><span class="lbl-passed">Прошло:</span> ${fmtParts(dur)}</span><span></span>`;
     }
   } else {
-    row2 = `<span class="lbl-passed">Прошло:</span> ${fmtParts(ann.passed)}<span class="cnt-sep">&nbsp;·&nbsp;</span><span class="lbl-remaining">Осталось:</span> ${fmtParts(ann.remaining)}`;
+    row2 = `<span><span class="lbl-passed">Прошло:</span> ${fmtParts(ann.passed)}</span><span><span class="lbl-remaining">Осталось:</span> ${fmtParts(ann.remaining)}</span>`;
   }
 
   // Row 3: note
@@ -1977,10 +1980,21 @@ const style = document.createElement('style');
 style.textContent = `@keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)} }`;
 document.head.appendChild(style);
 
+// Re-read events from localStorage on every load (fix: sync state)
+events = loadEvents();
+
 updateHeaderDate();
 renderEvents();
 checkDailyReminders();
 scheduleReminders();
+
+// Обновление при возврате в приложение (из фона)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    events = loadEvents();
+    renderEvents();
+  }
+});
 
 // Update every minute
 setInterval(() => {
