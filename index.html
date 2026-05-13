@@ -935,7 +935,7 @@
 
     <div class="field">
       <label>Название *</label>
-      <input type="text" id="inp-name" placeholder="Например: День рождения Влада" maxlength="80">
+      <input type="text" id="inp-name" placeholder="Например: День рождения Маши" maxlength="80">
     </div>
 
     <div class="field">
@@ -1318,6 +1318,7 @@ function renderEvents() {
   const container = document.getElementById('events-container');
   const sortBar   = document.getElementById('sort-bar');
   const filterBar = document.getElementById('cat-filter-bar');
+  if (!container || !sortBar || !filterBar) return; // DOM ещё не готов
 
   if (events.length === 0) {
     sortBar.style.display  = 'none';
@@ -1640,12 +1641,12 @@ function handleDrawerOverlayClick(e) {
   if (e.target.id === 'drawer-overlay') closeDrawer();
 }
 
-/* Drawer action proxies */
-function drawerToggleDone()  { closeDrawer(); toggleDone(drawerEventId); }
-function drawerShare()       { closeDrawer(); shareEvent(drawerEventId); }
-function drawerExportICS()   { closeDrawer(); exportICS(drawerEventId); }
-function drawerEdit()        { closeDrawer(); openEditModal(drawerEventId); }
-function drawerDelete()      { closeDrawer(); deleteEvent(drawerEventId); }
+/* Drawer action proxies — сохраняем id ДО closeDrawer */
+function drawerToggleDone()  { const id = drawerEventId; closeDrawer(); toggleDone(id); }
+function drawerShare()       { const id = drawerEventId; closeDrawer(); shareEvent(id); }
+function drawerExportICS()   { const id = drawerEventId; closeDrawer(); exportICS(id); }
+function drawerEdit()        { const id = drawerEventId; closeDrawer(); openEditModal(id); }
+function drawerDelete()      { const id = drawerEventId; closeDrawer(); deleteEvent(id); }
 
 /* ===== MODAL ===== */
 /* ===== CATEGORY & COLOR PICKERS ===== */
