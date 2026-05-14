@@ -1406,6 +1406,17 @@ function renderProfileForm(prefill) {
       </div>
     </div>
 
+    <div class="profile-field">
+      <label>Anthropic API Key 🔑</label>
+      <input type="text" id="prof-apikey" value="${localStorage.getItem('quest_api_key')||''}"
+        placeholder="sk-ant-api03-..." style="font-family:monospace;font-size:11px">
+      <div style="font-size:11px;color:var(--text3);margin-top:5px">
+        Нужен для генерации заданий через ИИ.
+        Получить: <a href="https://console.anthropic.com/settings/keys" target="_blank"
+          style="color:var(--amber)">console.anthropic.com</a>
+      </div>
+    </div>
+
     <button class="btn-save-profile" onclick="saveProfile()">
       ${prefill ? 'Сохранить изменения' : 'Начать квест →'}
     </button>`;
@@ -1429,13 +1440,13 @@ function toggleDir(el, key) {
 }
 
 function saveProfile() {
-  if (selectedDirs.size === 0) {
-    toast('Выбери хотя бы одно направление');
-    return;
-  }
-  const about    = document.getElementById('prof-about').value.trim();
-  const goal     = parseInt(document.getElementById('prof-goal').value) || 35;
-  const prize    = document.getElementById('prof-prize').value.trim();
+  if (selectedDirs.size === 0) { toast('Выбери хотя бы одно направление'); return; }
+  const about  = document.getElementById('prof-about').value.trim();
+  const goal   = parseInt(document.getElementById('prof-goal').value) || 35;
+  const prize  = document.getElementById('prof-prize').value.trim();
+  const apiKey = document.getElementById('prof-apikey').value.trim();
+
+  if (apiKey) localStorage.setItem('quest_api_key', apiKey);
 
   questProfile = {
     directions: [...selectedDirs],
@@ -1679,7 +1690,161 @@ function toggleArchive() {
   if (body)   body.classList.toggle('open', archiveOpen);
 }
 
-/* ===== QUEST SCREEN (placeholder — Этап 2) ===== */
+/* ===== TASK GENERATION ===== */
+
+function getUpcomingEventsContext() {
+  const t = today();
+  const result = [];
+  for (let ahead = 0; ahead <= 3; ahead++) {
+    const check = new Date(t.getFullYear(), t.getMonth(), t.getDate() + ahead);
+    const mm = check.getMonth(), dd = check.getDate();
+    events.filter(ev => {
+      const p = parseDate(ev.date);
+      return ev.type === 'once'
+        ? p.getFullYear() === check.getFullYear() && p.getMonth() === mm && p.getDate() === dd
+        : p.getMonth() === mm && p.getDate() === dd;
+    }).forEach(ev => {
+      const when = ahead === 0 ? 'Сегодня' : ahead === 1 ? 'Завтра' : `Через ${ahead} дня`;
+      const cat  = ev.category ? (categories[ev.category]?.name || '') : '';
+      result.push(`${when}: "${ev.name}"${cat ? ` (${cat})` : ''}${ev.note ? ' — ' + ev.note : ''}`);
+    });
+  }
+  return result;
+}
+
+function getRecentTaskTitles() {
+  const t = today();
+  const titles = [];
+  for (let i = 1; i <= 14; i++) {
+    const d   = new Date(t.getFullYear(), t.getMonth(), t.getDate() - i);
+    const log = questLog[questDateKey(d)];
+    if (log?.task?.title) titles.push(log.task.title);
+  }
+  return titles;
+}
+
+async function generateDailyTask() {
+  const todayKey = questDateKey(today());
+  const apiKey   = localStorage.getItem('quest_api_key');
+
+  if (!apiKey) {
+    questLog[todayKey] = {
+      task: {
+        title: 'API ключ не указан',
+        description: 'Перейди в профиль и введи свой Anthropic API Key чтобы ИИ мог генерировать задания каждый день.',
+        category: 'Настройка', categoryEmoji: '⚙️',
+        difficulty: 'easy', duration: '2 минуты', tip: 'Ключ можно получить бесплатно на console.anthropic.com',
+        type: 'info'
+      },
+      generatedAt: Date.now()
+    };
+    localStorage.setItem('quest_log', JSON.stringify(questLog));
+    renderQuestScreen();
+    return;
+  }
+
+  const dirLabels = questProfile.directions.map(k => {
+    const d = DIRECTIONS.find(x => x.key === k);
+    return d ? `${d.emoji} ${d.label}` : k;
+  });
+
+  const upcomingEvents  = getUpcomingEventsContext();
+  const recentTasks     = getRecentTaskTitles();
+  const stars           = questStarsThisMonth();
+  const streak          = questStreakDays();
+  const t               = today();
+  const dateStr         = t.toLocaleDateString('ru', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+
+  const systemPrompt = `Ты персональный коуч в приложении саморазвития. Генерируешь ОДНО практичное задание на день.
+Отвечай ТОЛЬКО валидным JSON без markdown-блоков и без лишних слов.
+Формат:
+{
+  "title": "Название до 65 символов",
+  "description": "Конкретное описание что нужно сделать (3-4 предложения, практично и ясно)",
+  "category": "Название направления",
+  "categoryEmoji": "Эмодзи",
+  "difficulty": "easy|medium|hard",
+  "duration": "X минут",
+  "tip": "Короткий совет или мотивация (1 предложение)",
+  "type": "interest|event|fact|media"
+}
+Правила: easy=1⭐ (5-15 мин), medium=2⭐ (15-30 мин), hard=3⭐ (30+ мин).
+type "event" — задание к предстоящему событию (поздравление, подарок, подготовка).
+type "fact" — интересный факт или открытие, не по интересам (~20% случаев).
+type "media" — посмотреть/прочитать что-то конкретное (~15% случаев).
+type "interest" — по интересам пользователя (основной тип).
+Всегда пиши на русском. Задания должны быть выполнимы за один день.`;
+
+  const userPrompt = `Дата: ${dateStr}
+
+ПРОФИЛЬ:
+Направления: ${dirLabels.join(', ')}
+О себе: ${questProfile.about || 'не указано'}
+
+ПРОГРЕСС МЕСЯЦА:
+⭐ ${stars} / ${questProfile.monthGoal} | 🔥 Серия: ${streak} дн.
+
+ПРЕДСТОЯЩИЕ СОБЫТИЯ:
+${upcomingEvents.length ? upcomingEvents.join('\n') : 'Нет предстоящих событий'}
+
+НЕДАВНИЕ ЗАДАНИЯ (не повторять):
+${recentTasks.length ? recentTasks.map((t,i)=>`${i+1}. ${t}`).join('\n') : 'Нет'}
+
+Сгенерируй задание на сегодня. Если есть события завтра или послезавтра — приоритет им.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 600,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    const raw  = data.content?.[0]?.text || '';
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const task  = JSON.parse(clean);
+
+    questLog[todayKey] = { task, generatedAt: Date.now() };
+    localStorage.setItem('quest_log', JSON.stringify(questLog));
+    renderQuestScreen();
+
+  } catch (err) {
+    console.error('Task generation error:', err);
+    // Показываем кнопку повтора
+    const card = document.querySelector('.quest-card');
+    if (card) card.innerHTML = `
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:2rem;margin-bottom:8px">⚠️</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:4px">Не удалось сгенерировать задание</div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:16px">${escapeHtml(err.message)}</div>
+        <button onclick="retryGenerateTask()" style="
+          padding:10px 20px;background:var(--amber-dim);color:var(--amber);
+          border:1px solid var(--amber);border-radius:6px;cursor:pointer;
+          font-family:Manrope,sans-serif;font-weight:700;font-size:13px">
+          Попробовать снова
+        </button>
+      </div>`;
+  }
+}
+
+function retryGenerateTask() {
+  const todayKey = questDateKey(today());
+  delete questLog[todayKey];
+  localStorage.setItem('quest_log', JSON.stringify(questLog));
+  renderQuestScreen();
+}
+
+/* ===== QUEST SCREEN ===== */
 function questDateKey(d) {
   return d.toISOString().slice(0,10);
 }
