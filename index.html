@@ -1073,7 +1073,60 @@
     cursor: pointer; transition: all 0.15s;
   }
   .btn-edit-profile:hover { color: var(--text2); border-color: var(--border2); }
-</style>
+
+  /* ===== MONTH RESULT SCREEN ===== */
+  .result-screen {
+    text-align: center; padding: 2rem 0;
+    display: flex; flex-direction: column; align-items: center; gap: 0;
+  }
+  .result-icon { font-size: 4rem; margin-bottom: 12px; animation: popIn 0.4s ease; }
+  @keyframes popIn { from { transform: scale(0.5); opacity:0; } to { transform: scale(1); opacity:1; } }
+
+  .result-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.8rem; font-weight: 700; color: var(--text);
+    margin-bottom: 6px;
+  }
+  .result-subtitle { font-size: 13px; color: var(--text3); margin-bottom: 24px; }
+
+  .result-stats {
+    width: 100%; display: grid; grid-template-columns: 1fr 1fr;
+    gap: 10px; margin-bottom: 20px;
+  }
+  .result-stat {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px 10px;
+  }
+  .result-stat-val { font-size: 1.5rem; font-weight: 700; color: var(--amber); line-height: 1; margin-bottom: 4px; }
+  .result-stat-lbl { font-size: 11px; color: var(--text3); font-weight: 600; letter-spacing: 0.04em; }
+
+  .result-prize-box {
+    width: 100%; background: var(--amber-dim);
+    border: 1px solid var(--amber); border-radius: var(--radius-sm);
+    padding: 16px; margin-bottom: 20px;
+  }
+  .result-prize-lbl { font-size: 11px; color: var(--amber); font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 6px; }
+  .result-prize-val { font-size: 16px; font-weight: 700; color: var(--text); }
+
+  .result-missed-box {
+    width: 100%; background: var(--bg2);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    padding: 14px; margin-bottom: 20px;
+    font-size: 13px; color: var(--text2); line-height: 1.5;
+  }
+
+  .result-btn {
+    width: 100%; padding: 14px;
+    border: none; border-radius: var(--radius-sm);
+    font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: opacity 0.15s;
+  }
+  .result-btn.win  { background: var(--amber); color: #000; }
+  .result-btn.lose { background: var(--bg3); color: var(--text); border: 1px solid var(--border); }
+  .result-btn:hover { opacity: 0.85; }
+
+  /* Streak bonus toast style */
+  .toast.streak { background: var(--amber); color: #000; font-weight: 700; }</style>
 </head>
 <body>
 
@@ -1359,9 +1412,102 @@ function switchTab(tab) {
   if (tab === 'quest') renderQuestRoot();
 }
 
+/* ===== MONTH RESULTS ===== */
+let pendingMonthResult = null;
+
+function calcMonthStats(year, month) {
+  const prefix  = `${year}-${String(month+1).padStart(2,'0')}`;
+  const entries = Object.entries(questLog).filter(([k]) => k.startsWith(prefix) && !k.includes('_bonus'));
+  let stars = 0, daysLogged = 0, daysDone = 0, bestStreak = 0, cur = 0;
+  // Sort by date for streak calc
+  entries.sort(([a],[b]) => a.localeCompare(b)).forEach(([,v]) => {
+    stars += (v.stars || 0);
+    if (v.done !== undefined) {
+      daysLogged++;
+      if (v.done) { daysDone++; cur++; bestStreak = Math.max(bestStreak, cur); }
+      else cur = 0;
+    }
+  });
+  // Count bonus stars
+  Object.entries(questLog).filter(([k]) => k.startsWith(prefix+'_bonus'))
+    .forEach(([,v]) => { stars += (v.stars||0); });
+  return { stars, daysLogged, daysDone, bestStreak };
+}
+
+function checkMonthEnd() {
+  if (!questProfile) return;
+  const t       = today();
+  const months  = JSON.parse(localStorage.getItem('quest_months') || '{}');
+  const prevDate = new Date(t.getFullYear(), t.getMonth() - 1, 1);
+  const prevKey  = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
+  if (!months[prevKey]) {
+    const stats = calcMonthStats(prevDate.getFullYear(), prevDate.getMonth());
+    if (stats.daysLogged > 0) {
+      const result = { ...stats, goal: questProfile.monthGoal, prize: questProfile.monthPrize,
+        month: prevKey, win: stats.stars >= questProfile.monthGoal };
+      months[prevKey] = result;
+      localStorage.setItem('quest_months', JSON.stringify(months));
+      pendingMonthResult = result;
+    }
+  }
+}
+
+function renderMonthResults(r) {
+  const root = document.getElementById('quest-root');
+  const MONTHS_ACC = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+  const [yr, mo] = r.month.split('-').map(Number);
+  const monthName = `${MONTHS_ACC[mo-1]} ${yr}`;
+
+  if (r.win) {
+    root.innerHTML = `
+      <div class="result-screen">
+        <div class="result-icon">🏆</div>
+        <div class="result-title">Цель достигнута!</div>
+        <div class="result-subtitle">${monthName} · ${r.stars} из ${r.goal} ⭐</div>
+        <div class="result-stats">
+          <div class="result-stat"><div class="result-stat-val">${r.stars}</div><div class="result-stat-lbl">Звёзд набрано</div></div>
+          <div class="result-stat"><div class="result-stat-val">${r.daysDone}</div><div class="result-stat-lbl">Дней выполнено</div></div>
+          <div class="result-stat"><div class="result-stat-val">${r.bestStreak}</div><div class="result-stat-lbl">Лучшая серия</div></div>
+          <div class="result-stat"><div class="result-stat-val">${r.daysLogged}</div><div class="result-stat-lbl">Дней в игре</div></div>
+        </div>
+        ${r.prize ? `<div class="result-prize-box">
+          <div class="result-prize-lbl">🎁 Твой приз</div>
+          <div class="result-prize-val">${escapeHtml(r.prize)}</div>
+        </div>` : ''}
+        <button class="result-btn win" onclick="dismissMonthResult()">Продолжить →</button>
+      </div>`;
+  } else {
+    const diff = r.goal - r.stars;
+    root.innerHTML = `
+      <div class="result-screen">
+        <div class="result-icon">💪</div>
+        <div class="result-title">В следующий раз!</div>
+        <div class="result-subtitle">${monthName} · ${r.stars} из ${r.goal} ⭐</div>
+        <div class="result-stats">
+          <div class="result-stat"><div class="result-stat-val">${r.stars}</div><div class="result-stat-lbl">Звёзд набрано</div></div>
+          <div class="result-stat"><div class="result-stat-val">${diff}</div><div class="result-stat-lbl">Не хватило</div></div>
+          <div class="result-stat"><div class="result-stat-val">${r.daysDone}</div><div class="result-stat-lbl">Дней выполнено</div></div>
+          <div class="result-stat"><div class="result-stat-val">${r.bestStreak}</div><div class="result-stat-lbl">Лучшая серия</div></div>
+        </div>
+        <div class="result-missed-box">
+          Не сдавайся — каждый новый месяц это чистый старт.<br>
+          ${r.daysDone > 0 ? `Ты выполнил ${r.daysDone} заданий — это уже результат!` : 'Попробуй начать с малого в следующем месяце.'}
+        </div>
+        <button class="result-btn lose" onclick="dismissMonthResult()">Новый месяц →</button>
+      </div>`;
+  }
+}
+
+function dismissMonthResult() {
+  pendingMonthResult = null;
+  renderQuestScreen();
+}
+
 /* ===== QUEST ROOT ===== */
 function renderQuestRoot() {
-  if (!questProfile) {
+  if (pendingMonthResult) {
+    renderMonthResults(pendingMonthResult);
+  } else if (!questProfile) {
     renderProfileForm();
   } else {
     renderQuestScreen();
@@ -1408,8 +1554,15 @@ function renderProfileForm(prefill) {
 
     <div class="profile-field">
       <label>Anthropic API Key 🔑</label>
-      <input type="text" id="prof-apikey" value="${localStorage.getItem('quest_api_key')||''}"
-        placeholder="sk-ant-api03-..." style="font-family:monospace;font-size:11px">
+      <div style="display:flex;gap:6px;align-items:center">
+        <input type="password" id="prof-apikey" value="${localStorage.getItem('quest_api_key')||''}"
+          placeholder="sk-ant-api03-..."
+          style="font-family:monospace;font-size:11px;flex:1">
+        <button onclick="toggleApiKeyVisibility()" title="Показать/скрыть"
+          style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text3);cursor:pointer;font-size:14px;flex-shrink:0">👁</button>
+        <button onclick="copyApiKey()" title="Копировать"
+          style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text3);cursor:pointer;font-size:14px;flex-shrink:0">📋</button>
+      </div>
       <div style="font-size:11px;color:var(--text3);margin-top:5px">
         Нужен для генерации заданий через ИИ.
         Получить: <a href="https://console.anthropic.com/settings/keys" target="_blank"
@@ -1426,6 +1579,28 @@ function renderProfileForm(prefill) {
     selectedDirs = new Set(p.directions);
   } else {
     selectedDirs = new Set();
+  }
+}
+
+function toggleApiKeyVisibility() {
+  const inp = document.getElementById('prof-apikey');
+  if (!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+async function copyApiKey() {
+  const key = localStorage.getItem('quest_api_key') || document.getElementById('prof-apikey')?.value || '';
+  if (!key) { toast('Ключ не найден'); return; }
+  try {
+    await navigator.clipboard.writeText(key);
+    toast('API ключ скопирован ✓');
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = key; ta.style.cssText = 'position:fixed;opacity:0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    toast('API ключ скопирован ✓');
   }
 }
 
@@ -1960,7 +2135,8 @@ function renderQuestScreen() {
       <div class="quest-week-row">${historyDots}</div>
     </div>
 
-    <button class="btn-edit-profile" onclick="renderProfileForm(questProfile)">⚙ Изменить профиль</button>`;
+    <button class="btn-edit-profile" onclick="renderProfileForm(questProfile)">⚙ Изменить профиль</button>
+    <button class="btn-edit-profile" style="margin-top:6px" onclick="renderHistoryScreen()">📊 История месяцев</button>`;
 
   // Если задание ещё не сгенерировано — запускаем генерацию
   if (!todayLog || !todayLog.task) {
@@ -1972,13 +2148,64 @@ function markQuest(done) {
   const key  = questDateKey(today());
   const log  = questLog[key];
   if (!log) return;
-  const task   = log.task;
-  const stars  = done
-    ? (task.difficulty === 'easy' ? 1 : task.difficulty === 'hard' ? 3 : 2)
+  const stars = done
+    ? (log.task.difficulty === 'easy' ? 1 : log.task.difficulty === 'hard' ? 3 : 2)
     : -1;
   questLog[key] = { ...log, done, stars };
   localStorage.setItem('quest_log', JSON.stringify(questLog));
+
+  // Бонус за серию каждые 7 дней
+  if (done) {
+    const streak = questStreakDays();
+    if (streak > 0 && streak % 7 === 0) {
+      const bonusKey = `${questDateKey(today())}_bonus_streak${streak}`;
+      if (!questLog[bonusKey]) {
+        questLog[bonusKey] = { stars: 5, type: 'streak_bonus' };
+        localStorage.setItem('quest_log', JSON.stringify(questLog));
+        setTimeout(() => toast(`🔥 Серия ${streak} дней! +5⭐ бонус!`, 4000), 400);
+      }
+    }
+  }
+
   renderQuestScreen();
+}
+
+function renderHistoryScreen() {
+  const root   = document.getElementById('quest-root');
+  const months = JSON.parse(localStorage.getItem('quest_months') || '{}');
+  const entries = Object.entries(months).sort(([a],[b]) => b.localeCompare(a));
+  const MONTHS_ACC = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+
+  if (!entries.length) {
+    root.innerHTML = `
+      <div style="text-align:center;padding:40px 0;color:var(--text3)">
+        <div style="font-size:2.5rem;margin-bottom:12px">📊</div>
+        <div style="font-size:13px">История месяцев пока пуста</div>
+      </div>
+      <button class="btn-edit-profile" onclick="renderQuestScreen()">← Назад</button>`;
+    return;
+  }
+
+  const rows = entries.map(([key, r]) => {
+    const [yr, mo] = key.split('-').map(Number);
+    const name = `${MONTHS_ACC[mo-1]} ${yr}`;
+    const win  = r.stars >= r.goal;
+    return `<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="font-size:1.5rem">${win ? '🏆' : '💪'}</div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">${name}</div>
+        <div style="font-size:11px;color:var(--text3)">⭐ ${r.stars}/${r.goal} · ✓ ${r.daysDone} дн. · 🔥 ${r.bestStreak} серия</div>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:${win?'var(--amber)':'var(--text3)'}">
+        ${win ? '+приз' : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  root.innerHTML = `
+    <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">📊 История месяцев</div>
+    <div>${rows}</div>
+    <button class="btn-edit-profile" style="margin-top:16px" onclick="renderQuestScreen()">← Назад</button>`;
 }
 
 /* ===== RENDER ===== */
@@ -2765,6 +2992,7 @@ document.head.appendChild(style);
 
 function initApp() {
   events = loadEvents();
+  checkMonthEnd();
   updateHeaderDate();
   renderEvents();
   checkDailyReminders();
