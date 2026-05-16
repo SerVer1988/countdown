@@ -1553,10 +1553,10 @@ function renderProfileForm(prefill) {
     </div>
 
     <div class="profile-field">
-      <label>Anthropic API Key 🔑</label>
+      <label>OpenRouter API Key 🔑</label>
       <div style="display:flex;gap:6px;align-items:center">
         <input type="password" id="prof-apikey" value="${localStorage.getItem('quest_api_key')||''}"
-          placeholder="sk-ant-api03-..."
+          placeholder="sk-or-v1-..."
           style="font-family:monospace;font-size:11px;flex:1">
         <button onclick="toggleApiKeyVisibility()" title="Показать/скрыть"
           style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text3);cursor:pointer;font-size:14px;flex-shrink:0">👁</button>
@@ -1564,19 +1564,9 @@ function renderProfileForm(prefill) {
           style="padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);color:var(--text3);cursor:pointer;font-size:14px;flex-shrink:0">📋</button>
       </div>
       <div style="font-size:11px;color:var(--text3);margin-top:5px">
-        Нужен для генерации заданий через ИИ.
-        Получить: <a href="https://console.anthropic.com/settings/keys" target="_blank"
-          style="color:var(--amber)">console.anthropic.com</a>
-      </div>
-    </div>
-
-    <div class="profile-field">
-      <label>Proxy URL (для обхода CORS) 🌐</label>
-      <input type="text" id="prof-proxy" value="${localStorage.getItem('quest_proxy_url')||''}"
-        placeholder="https://xxx.workers.dev" style="font-family:monospace;font-size:11px">
-      <div style="font-size:11px;color:var(--text3);margin-top:5px">
-        Если задание не загружается — нужен прокси.
-        <span style="color:var(--amber);cursor:pointer" onclick="showWorkerCode()">📋 Код для Cloudflare Workers</span>
+        Зарегистрируйся и получи ключ на
+        <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--amber)">openrouter.ai/keys</a>
+        · Принимает крипту · Прокси не нужен
       </div>
     </div>
 
@@ -1630,11 +1620,7 @@ function saveProfile() {
   const goal   = parseInt(document.getElementById('prof-goal').value) || 35;
   const prize  = document.getElementById('prof-prize').value.trim();
   const apiKey = document.getElementById('prof-apikey').value.trim();
-  const proxy  = document.getElementById('prof-proxy').value.trim();
-
   if (apiKey) localStorage.setItem('quest_api_key', apiKey);
-  if (proxy)  localStorage.setItem('quest_proxy_url', proxy);
-  else        localStorage.removeItem('quest_proxy_url');
 
   questProfile = {
     directions: [...selectedDirs],
@@ -1914,16 +1900,16 @@ function getRecentTaskTitles() {
 async function generateDailyTask() {
   const todayKey = questDateKey(today());
   const apiKey   = localStorage.getItem('quest_api_key');
-  const proxyUrl = (localStorage.getItem('quest_proxy_url') || '').trim();
-  const endpoint = proxyUrl || 'https://api.anthropic.com/v1/messages';
+  // OpenRouter напрямую поддерживает CORS — прокси не нужен
+  const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
 
   if (!apiKey) {
     questLog[todayKey] = { task: {
       title: 'API ключ не указан',
-      description: 'Перейди в «Изменить профиль» и введи Anthropic API Key в нижнем поле.',
+      description: 'Перейди в «Изменить профиль» и введи OpenRouter API Key.',
       category: 'Настройка', categoryEmoji: '⚙️',
       difficulty: 'easy', duration: '2 минуты',
-      tip: 'Ключ на console.anthropic.com → API Keys', type: 'info'
+      tip: 'Ключ на openrouter.ai → Keys', type: 'info'
     }, generatedAt: Date.now() };
     localStorage.setItem('quest_log', JSON.stringify(questLog));
     renderQuestScreen(); return;
@@ -1956,33 +1942,41 @@ ${recentTasks.map((x,i)=>`${i+1}. ${x}`).join('\n')||'нет'}
 Если есть события завтра/послезавтра — приоритет им.`;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 20000);
+  const timer = setTimeout(() => controller.abort(), 30000);
 
   try {
     const res = await fetch(endpoint, {
       method: 'POST',
       signal: controller.signal,
       headers: {
-        'Content-Type':      'application/json',
-        'x-api-key':         apiKey,
-        'anthropic-version': '2023-06-01',
+        'Content-Type':  'application/json',
+        'Authorization': `Bearer ${apiKey}`,
+        'HTTP-Referer':  'https://countdown22.mastercarlo27.workers.dev',
+        'X-Title':       'Обратный отсчёт',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'anthropic/claude-3-haiku',   // дешёвый и быстрый
         max_tokens: 600,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }]
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user',   content: userPrompt   }
+        ]
       })
     });
     clearTimeout(timer);
 
     if (res.status === 401) throw new Error('auth');
+    if (res.status === 402) throw new Error('balance');
     if (res.status === 429) throw new Error('rate_limit');
-    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
+    if (!res.ok) {
+      const e = await res.json().catch(()=>({}));
+      throw new Error(e.error?.message || `HTTP ${res.status}`);
+    }
 
-    const data  = await res.json();
-    const raw   = data.content?.[0]?.text || '';
-    const task  = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    const data = await res.json();
+    // OpenRouter возвращает OpenAI-совместимый формат
+    const raw  = data.choices?.[0]?.message?.content || '';
+    const task = JSON.parse(raw.replace(/```json|```/g,'').trim());
 
     questLog[todayKey] = { task, generatedAt: Date.now() };
     localStorage.setItem('quest_log', JSON.stringify(questLog));
@@ -1992,36 +1986,25 @@ ${recentTasks.map((x,i)=>`${i+1}. ${x}`).join('\n')||'нет'}
     clearTimeout(timer);
     console.error('Quest generation error:', err);
 
-    let msg  = escapeHtml(err.message || 'Неизвестная ошибка');
-    let hint = '';
-
+    let msg = '';
     if (err.name === 'AbortError') {
-      msg = 'Превышено время ожидания (20 сек). Проверь интернет.';
+      msg = '⏳ Превышено время ожидания. Проверь интернет.';
     } else if (err.message === 'auth') {
       msg = '❌ Неверный API ключ. Проверь ключ в профиле.';
+    } else if (err.message === 'balance') {
+      msg = '💳 Недостаточно средств на OpenRouter. Пополни баланс на openrouter.ai';
     } else if (err.message === 'rate_limit') {
       msg = '⏳ Превышен лимит запросов. Попробуй через минуту.';
-    } else if (err.name === 'TypeError' || msg.includes('fetch') || msg.includes('Failed') || msg.includes('Network')) {
-      msg  = '🚫 CORS: браузер заблокировал запрос к API';
-      hint = `<div style="font-size:12px;color:var(--text2);text-align:left;background:var(--bg3);padding:12px;border-radius:8px;margin:10px 0;line-height:1.7">
-        <b>Нужен прокси-сервер.</b> Создай бесплатно за 3 мин:<br>
-        1. Зайди на <a href="https://workers.cloudflare.com" target="_blank" style="color:var(--amber)">workers.cloudflare.com</a> → Create Worker<br>
-        2. Вставь код (кнопка ниже) → Deploy<br>
-        3. Скопируй URL воркера (вида <i>xxx.workers.dev</i>)<br>
-        4. Введи его в поле <b>Proxy URL</b> в профиле
-      </div>
-      <button onclick="showWorkerCode()" style="width:100%;padding:9px;border:1px solid var(--amber);border-radius:6px;background:var(--amber-dim);color:var(--amber);cursor:pointer;font-weight:700;font-size:12px;margin-bottom:6px">
-        📋 Скопировать код Cloudflare Worker
-      </button>`;
+    } else {
+      msg = '⚠️ ' + escapeHtml(err.message || 'Неизвестная ошибка');
     }
 
     const card = document.querySelector('.quest-card');
     if (card) card.innerHTML = `
-      <div style="padding:16px 0">
-        <div style="text-align:center;font-size:2rem;margin-bottom:8px">⚠️</div>
-        <div style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:4px">${msg}</div>
-        ${hint}
-        <button onclick="retryGenerateTask()" style="width:100%;padding:10px;
+      <div style="padding:20px 0;text-align:center">
+        <div style="font-size:2rem;margin-bottom:10px">⚠️</div>
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5">${msg}</div>
+        <button onclick="retryGenerateTask()" style="width:100%;padding:12px;
           background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber);
           border-radius:6px;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">
           🔄 Попробовать снова
