@@ -1,4 +1,4 @@
-const CACHE = 'countdown-v4';
+const CACHE = 'countdown-v5';
 const ASSETS = ['./index.html', './manifest.json', './icon.png'];
 
 self.addEventListener('install', e => {
@@ -10,15 +10,15 @@ self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(keys =>
     Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
   ));
-  self.clients.claim(); 
+  self.clients.claim();
 });
 
-// Network-first: всегда берём свежее из сети, кэш только при офлайн
+// Только GET запросы кэшируем — POST никогда не кэшируем
 self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return; // POST/PUT пропускаем напрямую
   e.respondWith(
     fetch(e.request)
       .then(res => {
-        // Обновляем кэш свежей версией
         const clone = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, clone));
         return res;
