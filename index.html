@@ -1570,6 +1570,16 @@ function renderProfileForm(prefill) {
       </div>
     </div>
 
+    <div class="profile-field">
+      <label>Proxy URL (для обхода CORS) 🌐</label>
+      <input type="text" id="prof-proxy" value="${localStorage.getItem('quest_proxy_url')||''}"
+        placeholder="https://xxx.workers.dev" style="font-family:monospace;font-size:11px">
+      <div style="font-size:11px;color:var(--text3);margin-top:5px">
+        Если задание не загружается — нужен прокси.
+        <span style="color:var(--amber);cursor:pointer" onclick="showWorkerCode()">📋 Код для Cloudflare Workers</span>
+      </div>
+    </div>
+
     <button class="btn-save-profile" onclick="saveProfile()">
       ${prefill ? 'Сохранить изменения' : 'Начать квест →'}
     </button>`;
@@ -1620,8 +1630,11 @@ function saveProfile() {
   const goal   = parseInt(document.getElementById('prof-goal').value) || 35;
   const prize  = document.getElementById('prof-prize').value.trim();
   const apiKey = document.getElementById('prof-apikey').value.trim();
+  const proxy  = document.getElementById('prof-proxy').value.trim();
 
   if (apiKey) localStorage.setItem('quest_api_key', apiKey);
+  if (proxy)  localStorage.setItem('quest_proxy_url', proxy);
+  else        localStorage.removeItem('quest_proxy_url');
 
   questProfile = {
     directions: [...selectedDirs],
@@ -1901,76 +1914,59 @@ function getRecentTaskTitles() {
 async function generateDailyTask() {
   const todayKey = questDateKey(today());
   const apiKey   = localStorage.getItem('quest_api_key');
+  const proxyUrl = (localStorage.getItem('quest_proxy_url') || '').trim();
+  const endpoint = proxyUrl || 'https://api.anthropic.com/v1/messages';
 
   if (!apiKey) {
-    questLog[todayKey] = {
-      task: {
-        title: 'API ключ не указан',
-        description: 'Перейди в профиль и введи свой Anthropic API Key чтобы ИИ мог генерировать задания каждый день.',
-        category: 'Настройка', categoryEmoji: '⚙️',
-        difficulty: 'easy', duration: '2 минуты', tip: 'Ключ можно получить бесплатно на console.anthropic.com',
-        type: 'info'
-      },
-      generatedAt: Date.now()
-    };
+    questLog[todayKey] = { task: {
+      title: 'API ключ не указан',
+      description: 'Перейди в «Изменить профиль» и введи Anthropic API Key в нижнем поле.',
+      category: 'Настройка', categoryEmoji: '⚙️',
+      difficulty: 'easy', duration: '2 минуты',
+      tip: 'Ключ на console.anthropic.com → API Keys', type: 'info'
+    }, generatedAt: Date.now() };
     localStorage.setItem('quest_log', JSON.stringify(questLog));
-    renderQuestScreen();
-    return;
+    renderQuestScreen(); return;
   }
 
   const dirLabels = questProfile.directions.map(k => {
     const d = DIRECTIONS.find(x => x.key === k);
     return d ? `${d.emoji} ${d.label}` : k;
   });
-
-  const upcomingEvents  = getUpcomingEventsContext();
-  const recentTasks     = getRecentTaskTitles();
-  const stars           = questStarsThisMonth();
-  const streak          = questStreakDays();
-  const t               = today();
-  const dateStr         = t.toLocaleDateString('ru', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const upcomingEvents = getUpcomingEventsContext();
+  const recentTasks    = getRecentTaskTitles();
+  const stars  = questStarsThisMonth();
+  const streak = questStreakDays();
+  const t      = today();
+  const dateStr = t.toLocaleDateString('ru', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
   const systemPrompt = `Ты персональный коуч в приложении саморазвития. Генерируешь ОДНО практичное задание на день.
-Отвечай ТОЛЬКО валидным JSON без markdown-блоков и без лишних слов.
-Формат:
-{
-  "title": "Название до 65 символов",
-  "description": "Конкретное описание что нужно сделать (3-4 предложения, практично и ясно)",
-  "category": "Название направления",
-  "categoryEmoji": "Эмодзи",
-  "difficulty": "easy|medium|hard",
-  "duration": "X минут",
-  "tip": "Короткий совет или мотивация (1 предложение)",
-  "type": "interest|event|fact|media"
-}
-Правила: easy=1⭐ (5-15 мин), medium=2⭐ (15-30 мин), hard=3⭐ (30+ мин).
-type "event" — задание к предстоящему событию (поздравление, подарок, подготовка).
-type "fact" — интересный факт или открытие, не по интересам (~20% случаев).
-type "media" — посмотреть/прочитать что-то конкретное (~15% случаев).
-type "interest" — по интересам пользователя (основной тип).
-Всегда пиши на русском. Задания должны быть выполнимы за один день.`;
+Отвечай ТОЛЬКО валидным JSON без markdown и без лишнего текста.
+Формат: {"title":"до 65 символов","description":"3-4 конкретных предложения","category":"название","categoryEmoji":"эмодзи","difficulty":"easy|medium|hard","duration":"X минут","tip":"1 совет","type":"interest|event|fact|media"}
+easy=1⭐(5-15мин), medium=2⭐(15-30мин), hard=3⭐(30+мин). Пиши на русском.`;
 
   const userPrompt = `Дата: ${dateStr}
-
-ПРОФИЛЬ:
 Направления: ${dirLabels.join(', ')}
 О себе: ${questProfile.about || 'не указано'}
+Прогресс: ⭐${stars}/${questProfile.monthGoal} | 🔥${streak}дн.
+Предстоящие события:
+${upcomingEvents.length ? upcomingEvents.join('\n') : 'нет'}
+Недавние задания (не повторять):
+${recentTasks.map((x,i)=>`${i+1}. ${x}`).join('\n')||'нет'}
+Если есть события завтра/послезавтра — приоритет им.`;
 
-ПРОГРЕСС МЕСЯЦА:
-⭐ ${stars} / ${questProfile.monthGoal} | 🔥 Серия: ${streak} дн.
-
-ПРЕДСТОЯЩИЕ СОБЫТИЯ:
-${upcomingEvents.length ? upcomingEvents.join('\n') : 'Нет предстоящих событий'}
-
-НЕДАВНИЕ ЗАДАНИЯ (не повторять):
-${recentTasks.length ? recentTasks.map((t,i)=>`${i+1}. ${t}`).join('\n') : 'Нет'}
-
-Сгенерируй задание на сегодня. Если есть события завтра или послезавтра — приоритет им.`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch(endpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      headers: {
+        'Content-Type':      'application/json',
+        'x-api-key':         apiKey,
+        'anthropic-version': '2023-06-01',
+      },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
         max_tokens: 600,
@@ -1978,38 +1974,106 @@ ${recentTasks.length ? recentTasks.map((t,i)=>`${i+1}. ${t}`).join('\n') : 'Не
         messages: [{ role: 'user', content: userPrompt }]
       })
     });
+    clearTimeout(timer);
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || `HTTP ${res.status}`);
-    }
+    if (res.status === 401) throw new Error('auth');
+    if (res.status === 429) throw new Error('rate_limit');
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
 
-    const data = await res.json();
-    const raw  = data.content?.[0]?.text || '';
-    const clean = raw.replace(/```json|```/g, '').trim();
-    const task  = JSON.parse(clean);
+    const data  = await res.json();
+    const raw   = data.content?.[0]?.text || '';
+    const task  = JSON.parse(raw.replace(/```json|```/g,'').trim());
 
     questLog[todayKey] = { task, generatedAt: Date.now() };
     localStorage.setItem('quest_log', JSON.stringify(questLog));
     renderQuestScreen();
 
   } catch (err) {
-    console.error('Task generation error:', err);
-    // Показываем кнопку повтора
+    clearTimeout(timer);
+    console.error('Quest generation error:', err);
+
+    let msg  = escapeHtml(err.message || 'Неизвестная ошибка');
+    let hint = '';
+
+    if (err.name === 'AbortError') {
+      msg = 'Превышено время ожидания (20 сек). Проверь интернет.';
+    } else if (err.message === 'auth') {
+      msg = '❌ Неверный API ключ. Проверь ключ в профиле.';
+    } else if (err.message === 'rate_limit') {
+      msg = '⏳ Превышен лимит запросов. Попробуй через минуту.';
+    } else if (err.name === 'TypeError' || msg.includes('fetch') || msg.includes('Failed') || msg.includes('Network')) {
+      msg  = '🚫 CORS: браузер заблокировал запрос к API';
+      hint = `<div style="font-size:12px;color:var(--text2);text-align:left;background:var(--bg3);padding:12px;border-radius:8px;margin:10px 0;line-height:1.7">
+        <b>Нужен прокси-сервер.</b> Создай бесплатно за 3 мин:<br>
+        1. Зайди на <a href="https://workers.cloudflare.com" target="_blank" style="color:var(--amber)">workers.cloudflare.com</a> → Create Worker<br>
+        2. Вставь код (кнопка ниже) → Deploy<br>
+        3. Скопируй URL воркера (вида <i>xxx.workers.dev</i>)<br>
+        4. Введи его в поле <b>Proxy URL</b> в профиле
+      </div>
+      <button onclick="showWorkerCode()" style="width:100%;padding:9px;border:1px solid var(--amber);border-radius:6px;background:var(--amber-dim);color:var(--amber);cursor:pointer;font-weight:700;font-size:12px;margin-bottom:6px">
+        📋 Скопировать код Cloudflare Worker
+      </button>`;
+    }
+
     const card = document.querySelector('.quest-card');
     if (card) card.innerHTML = `
-      <div style="text-align:center;padding:20px 0">
-        <div style="font-size:2rem;margin-bottom:8px">⚠️</div>
-        <div style="font-size:13px;color:var(--text2);margin-bottom:4px">Не удалось сгенерировать задание</div>
-        <div style="font-size:11px;color:var(--text3);margin-bottom:16px">${escapeHtml(err.message)}</div>
-        <button onclick="retryGenerateTask()" style="
-          padding:10px 20px;background:var(--amber-dim);color:var(--amber);
-          border:1px solid var(--amber);border-radius:6px;cursor:pointer;
-          font-family:Manrope,sans-serif;font-weight:700;font-size:13px">
-          Попробовать снова
+      <div style="padding:16px 0">
+        <div style="text-align:center;font-size:2rem;margin-bottom:8px">⚠️</div>
+        <div style="text-align:center;font-size:13px;color:var(--text2);margin-bottom:4px">${msg}</div>
+        ${hint}
+        <button onclick="retryGenerateTask()" style="width:100%;padding:10px;
+          background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber);
+          border-radius:6px;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">
+          🔄 Попробовать снова
         </button>
       </div>`;
   }
+}
+
+function showWorkerCode() {
+  const code = `export default {
+  async fetch(request) {
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, x-api-key, anthropic-version',
+      }});
+    }
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': request.headers.get('x-api-key'),
+        'anthropic-version': request.headers.get('anthropic-version') || '2023-06-01',
+      },
+      body: request.body,
+    });
+    const data = await res.text();
+    return new Response(data, { status: res.status, headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*',
+    }});
+  }
+};`;
+
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(code).then(() => toast('Код воркера скопирован ✓'));
+  }
+
+  // Показываем код в текстовой области поверх экрана
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:9999;display:flex;flex-direction:column;padding:16px;box-sizing:border-box';
+  overlay.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <span style="color:#fff;font-weight:700;font-size:14px">Cloudflare Worker — вставь в редактор</span>
+      <button onclick="this.closest('div[style*=fixed]').remove()" style="background:var(--amber);color:#000;border:none;border-radius:6px;padding:6px 12px;cursor:pointer;font-weight:700">✕</button>
+    </div>
+    <textarea readonly style="flex:1;width:100%;background:#1e1e2e;color:#cdd6f4;border:1px solid #444;border-radius:8px;padding:12px;font-size:11px;font-family:monospace;resize:none;box-sizing:border-box">${code}</textarea>
+    <button onclick="navigator.clipboard?.writeText(this.previousElementSibling.value).then(()=>alert('Скопировано!'))" style="margin-top:8px;padding:12px;background:var(--amber);color:#000;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:14px">
+      📋 Скопировать
+    </button>`;
+  document.body.appendChild(overlay);
 }
 
 function retryGenerateTask() {
