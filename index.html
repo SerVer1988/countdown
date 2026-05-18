@@ -7,12 +7,12 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Отсчёт">
-<meta name="description" content="Контроль за важными датами">
+<meta name="apple-mobile-web-app-title" content="QuestDay">
+<meta name="description" content="QuestDay — твой ежедневный квест и контроль важных дат">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon.png" type="image/png">
 <link rel="apple-touch-icon" href="icon.png">
-<title>Обратный отсчёт</title>
+<title>QuestDay</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1084,16 +1084,20 @@
 
 <header>
   <div class="logo">
-    <h1>Обратный <span>отсчёт</span></h1>
-    <p id="today-display">загрузка...</p>
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="icon.png" alt="QuestDay" style="width:52px;height:52px;border-radius:14px;box-shadow:0 2px 8px rgba(0,0,0,0.15)">
+      <div>
+        <h1>Quest<span>Day</span></h1>
+        <p id="today-display">✦ Твой ежедневный квест</p>
+      </div>
+    </div>
   </div>
-
 </header>
 
 <!-- TABS -->
 <div class="tabs-bar">
   <button class="tab-btn active" id="tab-btn-dates" onclick="switchTab('dates')">📅 Даты</button>
-  <button class="tab-btn"        id="tab-btn-quest" onclick="switchTab('quest')">⚡ Квест</button>
+  <button class="tab-btn"        id="tab-btn-quest" onclick="switchTab('quest')">⚡ QuestDay</button>
 </div>
 
 <main>
@@ -1904,7 +1908,7 @@ ${recentTasks.map((x,i)=>`${i+1}. ${x}`).join('\n')||'нет'}
         'Content-Type':  'application/json',
         'Authorization': `Bearer ${apiKey}`,
         'HTTP-Referer':  'https://countdown22.mastercarlo27.workers.dev',
-        'X-Title':       'Обратный отсчёт',
+        'X-Title':       'QuestDay',
       },
       body: JSON.stringify({
         model: 'anthropic/claude-3-haiku',   // дешёвый и быстрый
@@ -2825,7 +2829,7 @@ function exportICS(id) {
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Обратный отсчёт//RU',
+    'PRODID:-//QuestDay//RU',
     'CALSCALE:GREGORIAN',
     'BEGIN:VEVENT',
     `UID:${uid}`,
