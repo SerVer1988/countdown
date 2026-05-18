@@ -933,6 +933,52 @@
   .quest-done-btn.no  { background: var(--bg3); color: var(--text3); border: 1.5px solid var(--border); }
   .quest-done-btn.no:hover { color: var(--red); border-color: var(--red); }
 
+  /* --- SPEND STARS BAR --- */
+  .quest-spend-bar {
+    display: flex; gap: 6px; margin-top: 14px; padding-top: 14px;
+    border-top: 1.5px dashed var(--border);
+  }
+  .spend-btn {
+    flex: 1; padding: 8px 2px; border: 1.5px solid var(--border);
+    border-radius: 10px; background: #fff; cursor: pointer;
+    font-size: 10px; font-weight: 700; font-family: 'Manrope', sans-serif;
+    color: var(--text2); text-align: center; transition: all 0.15s; line-height: 1.4;
+  }
+  .spend-btn .spend-icon { font-size: 16px; display: block; margin-bottom: 2px; }
+  .spend-btn .spend-cost { color: var(--red); font-size: 9px; }
+  .spend-btn:hover { border-color: var(--border2); background: var(--bg3); color: var(--text); transform: translateY(-1px); }
+  .spend-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* --- DIRECTION PICKER OVERLAY --- */
+  .dir-pick-overlay {
+    position: fixed; inset: 0; background: rgba(28,58,14,0.45);
+    z-index: 300; display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+    backdrop-filter: blur(4px);
+  }
+  .dir-pick-overlay.open { opacity: 1; pointer-events: all; }
+  .dir-pick-sheet {
+    background: #fff; border-radius: 20px 20px 0 0;
+    padding: 20px 16px 32px; width: 100%; max-width: 500px;
+    transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .dir-pick-overlay.open .dir-pick-sheet { transform: translateY(0); }
+  .dir-pick-title {
+    font-size: 15px; font-weight: 700; color: var(--text);
+    margin-bottom: 14px; text-align: center;
+  }
+  .dir-pick-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px;
+  }
+  .dir-pick-chip {
+    display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--bg3); cursor: pointer; transition: all 0.15s;
+    font-size: 12px; font-weight: 600; color: var(--text2);
+  }
+  .dir-pick-chip:hover { border-color: #ABD887; background: var(--card2); color: var(--text); }
+  .dir-pick-chip.selected { border-color: #ABD887; background: var(--card2); color: #1C3A0E; }
+
   .quest-history { background: #fff; border: 1.5px solid var(--border); border-radius: var(--radius); padding: 14px 16px; box-shadow: 0 2px 8px rgba(28,58,14,0.05); }
   .quest-day-dot { flex: 1; aspect-ratio: 1; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px; background: var(--bg3); }
   .quest-day-dot.done   { background: var(--card2); }
@@ -1820,6 +1866,95 @@ function toggleArchive() {
   if (body)   body.classList.toggle('open', archiveOpen);
 }
 
+/* ===== SPEND STARS ===== */
+function spendStars(amount, reason) {
+  const current = questStarsThisMonth();
+  if (current < amount) {
+    toast(`Недостаточно звёзд — нужно ${amount}⭐, есть ${current}⭐`);
+    return false;
+  }
+  // Записываем трату как отрицательную запись
+  const key = `${questDateKey(today())}_spend_${Date.now()}`;
+  questLog[key] = { stars: -amount, type: 'spend', reason };
+  localStorage.setItem('quest_log', JSON.stringify(questLog));
+  toast(`${reason} −${amount}⭐`);
+  return true;
+}
+
+function replaceTask() {
+  if (!spendStars(1, '🔄 Замена задания')) return;
+  const key = questDateKey(today());
+  delete questLog[key];
+  localStorage.setItem('quest_log', JSON.stringify(questLog));
+  renderQuestScreen();
+}
+
+function freezeDay() {
+  const key = questDateKey(today());
+  if (questLog[key]?.done !== undefined) { toast('Сегодня уже отмечено'); return; }
+  if (questLog[key]?.frozen) { toast('День уже заморожен ❄️'); return; }
+  if (!spendStars(3, '❄️ Заморозка дня')) return;
+  questLog[key] = { ...(questLog[key] || {}), frozen: true };
+  localStorage.setItem('quest_log', JSON.stringify(questLog));
+  toast('День заморожен ❄️ — пропуск не засчитается');
+  renderQuestScreen();
+}
+
+function boostTask() {
+  const key = questDateKey(today());
+  if (questLog[key]?.done !== undefined) { toast('Задание уже выполнено'); return; }
+  if (!spendStars(1, '✨ Усиление задания')) return;
+  // Удаляем текущее и генерируем «усиленное»
+  const old = questLog[key];
+  delete questLog[key];
+  localStorage.setItem('quest_log', JSON.stringify(questLog));
+  generateDailyTask({ boost: true, previousTitle: old?.task?.title });
+  renderQuestScreen();
+}
+
+/* ===== DIRECTION PICKER ===== */
+let pendingForcedDirection = null;
+
+function openDirPicker() {
+  const key = questDateKey(today());
+  if (questLog[key]?.done !== undefined) { toast('Задание уже выполнено'); return; }
+  const grid = document.getElementById('dir-pick-grid');
+  grid.innerHTML = DIRECTIONS
+    .filter(d => questProfile?.directions?.includes(d.key))
+    .map(d => `<div class="dir-pick-chip" data-key="${d.key}" onclick="selectDirForTask(this,'${d.key}')">
+      <span style="font-size:18px">${d.emoji}</span>
+      <span>${d.label}</span>
+    </div>`).join('');
+  pendingForcedDirection = null;
+  document.getElementById('dir-pick-overlay').classList.add('open');
+}
+
+function selectDirForTask(el, key) {
+  document.querySelectorAll('.dir-pick-chip').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  pendingForcedDirection = key;
+}
+
+function confirmDirPick() {
+  if (!pendingForcedDirection) { toast('Выбери направление'); return; }
+  if (!spendStars(2, '🎯 Выбор направления')) { closeDirPicker(); return; }
+  const todayKey = questDateKey(today());
+  delete questLog[todayKey];
+  localStorage.setItem('quest_log', JSON.stringify(questLog));
+  closeDirPicker();
+  generateDailyTask({ forcedDirection: pendingForcedDirection });
+  renderQuestScreen();
+}
+
+function closeDirPicker() {
+  document.getElementById('dir-pick-overlay').classList.remove('open');
+  pendingForcedDirection = null;
+}
+
+function handleDirPickOverlay(e) {
+  if (e.target.id === 'dir-pick-overlay') closeDirPicker();
+}
+
 /* ===== TASK GENERATION ===== */
 
 function getUpcomingEventsContext() {
@@ -1853,10 +1988,10 @@ function getRecentTaskTitles() {
   return titles;
 }
 
-async function generateDailyTask() {
+async function generateDailyTask(options = {}) {
+  const { boost = false, forcedDirection = null, previousTitle = null } = options;
   const todayKey = questDateKey(today());
   const apiKey   = localStorage.getItem('quest_api_key');
-  // OpenRouter напрямую поддерживает CORS — прокси не нужен
   const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
 
   if (!apiKey) {
@@ -1865,53 +2000,81 @@ async function generateDailyTask() {
       description: 'Перейди в «Изменить профиль» и введи OpenRouter API Key.',
       category: 'Настройка', categoryEmoji: '⚙️',
       difficulty: 'easy', duration: '2 минуты',
-      tip: 'Ключ на openrouter.ai → Keys', type: 'info'
+      tip: 'Ключ на openrouter.ai/keys', type: 'info'
     }, generatedAt: Date.now() };
     localStorage.setItem('quest_log', JSON.stringify(questLog));
     renderQuestScreen(); return;
   }
 
-  const dirLabels = questProfile.directions.map(k => {
+  // Показываем спиннер
+  renderQuestScreen();
+
+  const dirLabels = (questProfile.directions || []).map(k => {
     const d = DIRECTIONS.find(x => x.key === k);
     return d ? `${d.emoji} ${d.label}` : k;
   });
-  const upcomingEvents = getUpcomingEventsContext();
-  const recentTasks    = getRecentTaskTitles();
+
+  // Принудительное направление
+  let forcedDirLabel = '';
+  if (forcedDirection) {
+    const d = DIRECTIONS.find(x => x.key === forcedDirection);
+    if (d) forcedDirLabel = `${d.emoji} ${d.label}`;
+  }
+
+  // Детальный контекст событий с реакцией
+  const evCtx = getUpcomingEventsContext();
+  const recentTasks = getRecentTaskTitles();
   const stars  = questStarsThisMonth();
   const streak = questStreakDays();
   const t      = today();
   const dateStr = t.toLocaleDateString('ru', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-  const systemPrompt = `Ты персональный коуч в приложении саморазвития. Генерируешь ОДНО практичное задание на день.
+  // Ближайшее событие для приоритетной реакции
+  const urgentEvent = getUrgentEvent();
+
+  let boostModifier = '';
+  if (boost) {
+    boostModifier = `\nВАЖНО: предыдущее задание "${previousTitle || ''}" было скучным. Сгенерируй НЕОБЫЧНОЕ, ВДОХНОВЛЯЮЩЕЕ, запоминающееся задание — нестандартный подход, элемент игры или открытия.`;
+  }
+
+  let dirModifier = '';
+  if (forcedDirLabel) {
+    dirModifier = `\nОБЯЗАТЕЛЬНО: задание ТОЛЬКО по направлению "${forcedDirLabel}". Игнорируй остальные направления.`;
+  }
+
+  const systemPrompt = `Ты персональный коуч в приложении QuestDay. Генерируешь ОДНО практичное задание на день.
 Отвечай ТОЛЬКО валидным JSON без markdown и без лишнего текста.
 Формат: {"title":"до 65 символов","description":"3-4 конкретных предложения","category":"название","categoryEmoji":"эмодзи","difficulty":"easy|medium|hard","duration":"X минут","tip":"1 совет","type":"interest|event|fact|media"}
-easy=1⭐(5-15мин), medium=2⭐(15-30мин), hard=3⭐(30+мин). Пиши на русском.`;
+easy=1⭐(5-15мин), medium=2⭐(15-30мин), hard=3⭐(30+мин). Пиши на русском.
+Если есть предстоящее событие — ОБЯЗАТЕЛЬНО встрой его в задание (подготовь поздравление, найди подарок, вспомни историю, найди 5 фактов о событии).${boostModifier}${dirModifier}`;
+
+  const eventSection = urgentEvent
+    ? `\n⚡ СРОЧНОЕ СОБЫТИЕ (ПРИОРИТЕТ): ${urgentEvent}\nЗадание ДОЛЖНО быть связано с этим событием!`
+    : evCtx.length
+      ? `\nПредстоящие события:\n${evCtx.join('\n')}`
+      : '\nПредстоящих событий нет';
 
   const userPrompt = `Дата: ${dateStr}
 Направления: ${dirLabels.join(', ')}
 О себе: ${questProfile.about || 'не указано'}
-Прогресс: ⭐${stars}/${questProfile.monthGoal} | 🔥${streak}дн.
-Предстоящие события:
-${upcomingEvents.length ? upcomingEvents.join('\n') : 'нет'}
+Прогресс: ⭐${stars}/${questProfile.monthGoal} | 🔥${streak}дн.${eventSection}
 Недавние задания (не повторять):
-${recentTasks.map((x,i)=>`${i+1}. ${x}`).join('\n')||'нет'}
-Если есть события завтра/послезавтра — приоритет им.`;
+${recentTasks.map((x,i)=>`${i+1}. ${x}`).join('\n')||'нет'}`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30000);
 
   try {
     const res = await fetch(endpoint, {
-      method: 'POST',
-      signal: controller.signal,
+      method: 'POST', signal: controller.signal,
       headers: {
-        'Content-Type':  'application/json',
+        'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer':  'https://countdown22.mastercarlo27.workers.dev',
-        'X-Title':       'QuestDay',
+        'HTTP-Referer': 'https://countdown22.mastercarlo27.workers.dev',
+        'X-Title': 'QuestDay',
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3-haiku',   // дешёвый и быстрый
+        model: 'anthropic/claude-3-haiku',
         max_tokens: 600,
         messages: [
           { role: 'system', content: systemPrompt },
@@ -1924,49 +2087,63 @@ ${recentTasks.map((x,i)=>`${i+1}. ${x}`).join('\n')||'нет'}
     if (res.status === 401) throw new Error('auth');
     if (res.status === 402) throw new Error('balance');
     if (res.status === 429) throw new Error('rate_limit');
-    if (!res.ok) {
-      const e = await res.json().catch(()=>({}));
-      throw new Error(e.error?.message || `HTTP ${res.status}`);
-    }
+    if (!res.ok) { const e = await res.json().catch(()=>({})); throw new Error(e.error?.message || `HTTP ${res.status}`); }
 
     const data = await res.json();
-    // OpenRouter возвращает OpenAI-совместимый формат
     const raw  = data.choices?.[0]?.message?.content || '';
     const task = JSON.parse(raw.replace(/```json|```/g,'').trim());
 
-    questLog[todayKey] = { task, generatedAt: Date.now() };
+    questLog[todayKey] = { ...(questLog[todayKey]||{}), task, generatedAt: Date.now() };
     localStorage.setItem('quest_log', JSON.stringify(questLog));
     renderQuestScreen();
 
   } catch (err) {
     clearTimeout(timer);
     console.error('Quest generation error:', err);
-
     let msg = '';
-    if (err.name === 'AbortError') {
-      msg = '⏳ Превышено время ожидания. Проверь интернет.';
-    } else if (err.message === 'auth') {
-      msg = '❌ Неверный API ключ. Проверь ключ в профиле.';
-    } else if (err.message === 'balance') {
-      msg = '💳 Недостаточно средств на OpenRouter. Пополни баланс на openrouter.ai';
-    } else if (err.message === 'rate_limit') {
-      msg = '⏳ Превышен лимит запросов. Попробуй через минуту.';
-    } else {
-      msg = '⚠️ ' + escapeHtml(err.message || 'Неизвестная ошибка');
-    }
+    if (err.name === 'AbortError')       msg = '⏳ Превышено время ожидания.';
+    else if (err.message === 'auth')     msg = '❌ Неверный API ключ. Проверь в профиле.';
+    else if (err.message === 'balance')  msg = '💳 Пополни баланс на openrouter.ai';
+    else if (err.message === 'rate_limit') msg = '⏳ Лимит запросов. Подожди минуту.';
+    else msg = '⚠️ ' + escapeHtml(err.message);
 
     const card = document.querySelector('.quest-card');
     if (card) card.innerHTML = `
       <div style="padding:20px 0;text-align:center">
         <div style="font-size:2rem;margin-bottom:10px">⚠️</div>
-        <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.5">${msg}</div>
-        <button onclick="retryGenerateTask()" style="width:100%;padding:12px;
-          background:var(--amber-dim);color:var(--amber);border:1px solid var(--amber);
-          border-radius:6px;cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">
+        <div style="font-size:13px;color:var(--text2);margin-bottom:16px">${msg}</div>
+        <button onclick="retryGenerateTask()" style="width:100%;padding:12px;background:var(--amber-dim);color:#1C3A0E;border:1.5px solid var(--amber);border-radius:var(--radius-sm);cursor:pointer;font-family:Manrope,sans-serif;font-weight:700;font-size:13px">
           🔄 Попробовать снова
         </button>
       </div>`;
   }
+}
+
+function getUrgentEvent() {
+  const t = today();
+  for (let ahead = 0; ahead <= 1; ahead++) {
+    const check = new Date(t.getFullYear(), t.getMonth(), t.getDate() + ahead);
+    const mm = check.getMonth(), dd = check.getDate();
+    const found = events.find(ev => {
+      const p = parseDate(ev.date);
+      return ev.type === 'once'
+        ? p.getFullYear() === check.getFullYear() && p.getMonth() === mm && p.getDate() === dd
+        : p.getMonth() === mm && p.getDate() === dd;
+    });
+    if (found) {
+      const when = ahead === 0 ? 'СЕГОДНЯ' : 'ЗАВТРА';
+      const cat = found.category ? categories[found.category]?.name : '';
+      const hint = cat === 'День рождения'
+        ? '(подготовь поздравление, найди или закажи подарок, напиши тёплые слова)'
+        : cat === 'Годовщина'
+          ? '(спланируй особенный вечер, напиши письмо, вспомни лучшие моменты)'
+          : cat === 'Дедлайн'
+            ? '(проверь готовность, составь чек-лист, сделай финальный шаг)'
+            : '(найди 5 интересных фактов, подготовься, придумай как отметить)';
+      return `${when}: "${found.name}"${cat ? ` [${cat}]` : ''} ${hint}`;
+    }
+  }
+  return null;
 }
 
 function showWorkerCode() {
@@ -2106,6 +2283,7 @@ function renderQuestScreen() {
         <span class="quest-meta-chip cat">${t.categoryEmoji||''} ${t.category||''}</span>
         <span class="quest-meta-chip">${t.duration||''}</span>
         <span class="quest-meta-chip stars">${starsStr}</span>
+        ${todayLog.frozen ? '<span class="quest-meta-chip" style="background:#E2EEF3;color:#4a8ab5">❄️ Заморожен</span>' : ''}
       </div>
       <div class="quest-title">${escapeHtml(t.title)}</div>
       <div class="quest-desc">${escapeHtml(t.description)}</div>
@@ -2113,6 +2291,12 @@ function renderQuestScreen() {
       <div class="quest-actions">
         <button class="quest-done-btn yes" onclick="markQuest(true)">✓ Выполнено</button>
         <button class="quest-done-btn no"  onclick="markQuest(false)">✗ Пропустить</button>
+      </div>
+      <div class="quest-spend-bar">
+        <button class="spend-btn" onclick="replaceTask()"><span class="spend-icon">🔄</span>Заменить<span class="spend-cost">−1⭐</span></button>
+        <button class="spend-btn" onclick="freezeDay()" ${todayLog.frozen?'disabled':''}><span class="spend-icon">❄️</span>Заморозить<span class="spend-cost">−3⭐</span></button>
+        <button class="spend-btn" onclick="boostTask()"><span class="spend-icon">✨</span>Усилить<span class="spend-cost">−1⭐</span></button>
+        <button class="spend-btn" onclick="openDirPicker()"><span class="spend-icon">🎯</span>Тема<span class="spend-cost">−2⭐</span></button>
       </div>`;
   }
 
@@ -2148,12 +2332,13 @@ function renderQuestScreen() {
 }
 
 function markQuest(done) {
-  const key  = questDateKey(today());
-  const log  = questLog[key];
+  const key = questDateKey(today());
+  const log = questLog[key];
   if (!log) return;
+  // Если заморожен и пропускает — не снимаем звезду
   const stars = done
     ? (log.task.difficulty === 'easy' ? 1 : log.task.difficulty === 'hard' ? 3 : 2)
-    : -1;
+    : (log.frozen ? 0 : -1);
   questLog[key] = { ...log, done, stars };
   localStorage.setItem('quest_log', JSON.stringify(questLog));
 
@@ -2169,7 +2354,6 @@ function markQuest(done) {
       }
     }
   }
-
   renderQuestScreen();
 }
 
@@ -3042,6 +3226,16 @@ if ('serviceWorker' in navigator) {
       </div>
     </div>
     <div class="drawer-actions" id="drawer-actions"><!-- rendered by JS --></div>
+  </div>
+</div>
+
+<!-- DIRECTION PICKER -->
+<div class="dir-pick-overlay" id="dir-pick-overlay" onclick="handleDirPickOverlay(event)">
+  <div class="dir-pick-sheet">
+    <div class="dir-pick-title">🎯 Выбери направление задания <span style="color:var(--red)">−2⭐</span></div>
+    <div class="dir-pick-grid" id="dir-pick-grid"><!-- rendered by JS --></div>
+    <button onclick="confirmDirPick()" style="width:100%;padding:13px;background:#ABD887;color:#1C3A0E;border:none;border-radius:var(--radius-sm);font-family:Manrope,sans-serif;font-weight:700;font-size:14px;cursor:pointer;margin-bottom:8px">Выбрать направление −2⭐</button>
+    <button onclick="closeDirPicker()" style="width:100%;padding:11px;border:1.5px solid var(--border);border-radius:var(--radius-sm);background:var(--bg3);color:var(--text2);font-family:Manrope,sans-serif;font-weight:700;cursor:pointer">Отмена</button>
   </div>
 </div>
 
