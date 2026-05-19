@@ -1327,9 +1327,10 @@ const DIRECTIONS = [
 ];
 
 let questProfile   = JSON.parse(localStorage.getItem('quest_profile') || 'null');
-let questLog       = JSON.parse(localStorage.getItem('quest_log')     || '{}');  // { "2026-05-14": {task, stars, done} }
+let questLog       = JSON.parse(localStorage.getItem('quest_log')     || '{}');
 let activeTab      = 'dates';
 let selectedDirs   = new Set();
+let isGenerating   = false;
 
 /* ===== DATE UTILS ===== */
 function today() {
@@ -1545,6 +1546,21 @@ function renderProfileForm(prefill) {
       <p>Выбери направления развития.<br>Задания будут строиться на их основе.</p>
     </div>
 
+    <div class="goal-row" style="margin-bottom:0">
+      <div class="profile-field" style="margin-top:0">
+        <label>Пол</label>
+        <select id="prof-gender">
+          <option value="" ${!p.gender?'selected':''}>Не указано</option>
+          <option value="male"   ${p.gender==='male'  ?'selected':''}>Мужской</option>
+          <option value="female" ${p.gender==='female'?'selected':''}>Женский</option>
+        </select>
+      </div>
+      <div class="profile-field" style="margin-top:0">
+        <label>Возраст</label>
+        <input type="number" id="prof-age" min="10" max="100" value="${p.age||''}" placeholder="38">
+      </div>
+    </div>
+
     <div class="profile-section-label">Направления развития</div>
     <div class="directions-grid" id="dir-grid">
       ${DIRECTIONS.map(d => `
@@ -1646,12 +1662,14 @@ function saveProfile() {
   const goal     = parseInt(document.getElementById('prof-goal').value) || 35;
   const prize    = document.getElementById('prof-prize').value.trim();
   const birthday = document.getElementById('prof-birthday')?.value || '';
+  const gender   = document.getElementById('prof-gender')?.value || '';
+  const age      = parseInt(document.getElementById('prof-age')?.value) || 0;
   const apiKey   = document.getElementById('prof-apikey').value.trim();
   if (apiKey) localStorage.setItem('quest_api_key', apiKey);
 
   questProfile = {
     directions: [...selectedDirs],
-    about, birthday,
+    about, birthday, gender, age: age || undefined,
     monthGoal:  Math.max(10, Math.min(100, goal)),
     monthPrize: prize,
     savedAt:    Date.now()
@@ -2014,12 +2032,24 @@ function getRecentTaskTitles() {
 }
 
 async function generateDailyTask(options = {}) {
+  if (isGenerating) return;                        // предотвращаем повторный запуск
+  isGenerating = true;
+
   const { boost = false, forcedDirection = null, previousTitle = null } = options;
   const todayKey = questDateKey(today());
   const apiKey   = localStorage.getItem('quest_api_key');
   const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
 
+  // Показываем спиннер прямо в карточке (без вызова renderQuestScreen)
+  const card = document.querySelector('.quest-card');
+  if (card) card.innerHTML = `
+    <div class="quest-loading">
+      <div class="quest-spinner"></div>
+      <span>Генерация задания дня...</span>
+    </div>`;
+
   if (!apiKey) {
+    isGenerating = false;
     questLog[todayKey] = { task: {
       title: 'API ключ не указан',
       description: 'Перейди в «Изменить профиль» и введи OpenRouter API Key.',
@@ -2030,9 +2060,6 @@ async function generateDailyTask(options = {}) {
     localStorage.setItem('quest_log', JSON.stringify(questLog));
     renderQuestScreen(); return;
   }
-
-  // Показываем спиннер
-  renderQuestScreen();
 
   const dirLabels = (questProfile.directions || []).map(k => {
     const d = DIRECTIONS.find(x => x.key === k);
@@ -2079,7 +2106,12 @@ easy=1⭐(5-15мин), medium=2⭐(15-30мин), hard=3⭐(30+мин). Пиши 
       ? `\nПредстоящие события:\n${evCtx.join('\n')}`
       : '\nПредстоящих событий нет';
 
+  const genderLabel = questProfile.gender === 'male' ? 'Мужской' : questProfile.gender === 'female' ? 'Женский' : '';
+  const ageLabel    = questProfile.age ? `${questProfile.age} лет` : '';
+  const personCtx   = [genderLabel, ageLabel].filter(Boolean).join(', ');
+
   const userPrompt = `Дата: ${dateStr}
+${personCtx ? `Пол и возраст: ${personCtx}` : ''}
 Направления: ${dirLabels.join(', ')}
 О себе: ${questProfile.about || 'не указано'}
 Прогресс: ⭐${stars}/${questProfile.monthGoal} | 🔥${streak}дн.${eventSection}
@@ -2120,20 +2152,22 @@ ${recentTasks.map((x,i)=>`${i+1}. ${x}`).join('\n')||'нет'}`;
 
     questLog[todayKey] = { ...(questLog[todayKey]||{}), task, generatedAt: Date.now() };
     localStorage.setItem('quest_log', JSON.stringify(questLog));
+    isGenerating = false;
     renderQuestScreen();
 
   } catch (err) {
     clearTimeout(timer);
+    isGenerating = false;
     console.error('Quest generation error:', err);
     let msg = '';
-    if (err.name === 'AbortError')       msg = '⏳ Превышено время ожидания.';
-    else if (err.message === 'auth')     msg = '❌ Неверный API ключ. Проверь в профиле.';
-    else if (err.message === 'balance')  msg = '💳 Пополни баланс на openrouter.ai';
+    if (err.name === 'AbortError')         msg = '⏳ Превышено время ожидания.';
+    else if (err.message === 'auth')       msg = '❌ Неверный API ключ. Проверь в профиле.';
+    else if (err.message === 'balance')    msg = '💳 Пополни баланс на openrouter.ai';
     else if (err.message === 'rate_limit') msg = '⏳ Лимит запросов. Подожди минуту.';
     else msg = '⚠️ ' + escapeHtml(err.message);
 
-    const card = document.querySelector('.quest-card');
-    if (card) card.innerHTML = `
+    const errCard = document.querySelector('.quest-card');
+    if (errCard) errCard.innerHTML = `
       <div style="padding:20px 0;text-align:center">
         <div style="font-size:2rem;margin-bottom:10px">⚠️</div>
         <div style="font-size:13px;color:var(--text2);margin-bottom:16px">${msg}</div>
@@ -2350,9 +2384,9 @@ function renderQuestScreen() {
     <button class="btn-edit-profile" onclick="renderProfileForm(questProfile)">⚙ Изменить профиль</button>
     <button class="btn-edit-profile" style="margin-top:6px" onclick="renderHistoryScreen()">📊 История месяцев</button>`;
 
-  // Если задание ещё не сгенерировано — запускаем генерацию
+  // Если задание ещё не сгенерировано — запускаем генерацию (один раз)
   if (!todayLog || !todayLog.task) {
-    generateDailyTask();
+    if (!isGenerating) generateDailyTask();
   }
 }
 
