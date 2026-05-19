@@ -1445,8 +1445,21 @@ function checkMonthEnd() {
   if (!months[prevKey]) {
     const stats = calcMonthStats(prevDate.getFullYear(), prevDate.getMonth());
     if (stats.daysLogged > 0) {
-      const result = { ...stats, goal: questProfile.monthGoal, prize: questProfile.monthPrize,
-        month: prevKey, win: stats.stars >= questProfile.monthGoal };
+      // Бонус +15⭐ за закрытый месяц без пропусков
+      const fullMonth = stats.daysDone === stats.daysLogged && stats.daysLogged >= 15;
+      if (fullMonth) {
+        const bonusKey = `${prevKey}-01_bonus_fullmonth`;
+        if (!questLog[bonusKey]) {
+          questLog[bonusKey] = { stars: 15, type: 'fullmonth_bonus' };
+          localStorage.setItem('quest_log', JSON.stringify(questLog));
+        }
+        stats.stars += 15; // учитываем в итоговой статистике
+      }
+      const result = {
+        ...stats, goal: questProfile.monthGoal, prize: questProfile.monthPrize,
+        month: prevKey, win: stats.stars >= questProfile.monthGoal,
+        fullMonthBonus: fullMonth
+      };
       months[prevKey] = result;
       localStorage.setItem('quest_months', JSON.stringify(months));
       pendingMonthResult = result;
@@ -1475,6 +1488,11 @@ function renderMonthResults(r) {
         ${r.prize ? `<div class="result-prize-box">
           <div class="result-prize-lbl">🎁 Твой приз</div>
           <div class="result-prize-val">${escapeHtml(r.prize)}</div>
+        </div>` : ''}
+        ${r.fullMonthBonus ? `<div style="background:var(--card2);border:1.5px solid #b8e098;border-radius:var(--radius-sm);padding:12px;margin-bottom:16px;text-align:center">
+          <div style="font-size:1.3rem">🏅</div>
+          <div style="font-weight:700;color:#1C3A0E;font-size:13px">Идеальный месяц! +15⭐</div>
+          <div style="font-size:11px;color:var(--text3)">Ни одного пропуска за месяц</div>
         </div>` : ''}
         <button class="result-btn win" onclick="dismissMonthResult()">Продолжить →</button>
       </div>`;
@@ -1555,6 +1573,12 @@ function renderProfileForm(prefill) {
     </div>
 
     <div class="profile-field">
+      <label>Мой день рождения 🎂</label>
+      <input type="date" id="prof-birthday" value="${p.birthday||''}">
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">За выполнение задания в свой день рождения +10⭐</div>
+    </div>
+
+    <div class="profile-field">
       <label>OpenRouter API Key 🔑</label>
       <div style="display:flex;gap:6px;align-items:center">
         <input type="password" id="prof-apikey" value="${localStorage.getItem('quest_api_key')||''}"
@@ -1618,15 +1642,16 @@ function toggleDir(el, key) {
 
 function saveProfile() {
   if (selectedDirs.size === 0) { toast('Выбери хотя бы одно направление'); return; }
-  const about  = document.getElementById('prof-about').value.trim();
-  const goal   = parseInt(document.getElementById('prof-goal').value) || 35;
-  const prize  = document.getElementById('prof-prize').value.trim();
-  const apiKey = document.getElementById('prof-apikey').value.trim();
+  const about    = document.getElementById('prof-about').value.trim();
+  const goal     = parseInt(document.getElementById('prof-goal').value) || 35;
+  const prize    = document.getElementById('prof-prize').value.trim();
+  const birthday = document.getElementById('prof-birthday')?.value || '';
+  const apiKey   = document.getElementById('prof-apikey').value.trim();
   if (apiKey) localStorage.setItem('quest_api_key', apiKey);
 
   questProfile = {
     directions: [...selectedDirs],
-    about,
+    about, birthday,
     monthGoal:  Math.max(10, Math.min(100, goal)),
     monthPrize: prize,
     savedAt:    Date.now()
@@ -2331,6 +2356,46 @@ function renderQuestScreen() {
   }
 }
 
+/* ===== EARNING BONUSES ===== */
+
+// +1⭐ если выполнил до 10:00
+function checkMorningBonus() {
+  if (new Date().getHours() >= 10) return;
+  const key = `${questDateKey(today())}_bonus_morning`;
+  if (questLog[key]) return;
+  questLog[key] = { stars: 1, type: 'morning_bonus' };
+  localStorage.setItem('quest_log', JSON.stringify(questLog));
+  setTimeout(() => toast('🌅 Утреннее выполнение! +1⭐', 3500), 600);
+}
+
+// +10⭐ если выполнил в свой день рождения
+function checkBirthdayBonus() {
+  if (!questProfile?.birthday) return;
+  const t    = today();
+  const bday = parseDate(questProfile.birthday);
+  if (bday.getMonth() !== t.getMonth() || bday.getDate() !== t.getDate()) return;
+  const key = `${questDateKey(today())}_bonus_birthday`;
+  if (questLog[key]) return;
+  questLog[key] = { stars: 10, type: 'birthday_bonus' };
+  localStorage.setItem('quest_log', JSON.stringify(questLog));
+  setTimeout(() => toast('🎂 С Днём рождения! +10⭐ праздничный бонус! 🎉', 5000), 800);
+}
+
+// +5⭐ разовый бонус за 10 событий в календаре
+function checkTenEventsBonus() {
+  if (events.length < 10) return;
+  const bonuses = JSON.parse(localStorage.getItem('quest_bonuses') || '{}');
+  if (bonuses.ten_events) return;
+  bonuses.ten_events = true;
+  localStorage.setItem('quest_bonuses', JSON.stringify(bonuses));
+  const key = `${questDateKey(today())}_bonus_ten_events`;
+  if (!questLog[key]) {
+    questLog[key] = { stars: 5, type: 'ten_events_bonus' };
+    localStorage.setItem('quest_log', JSON.stringify(questLog));
+    toast('🗓️ 10 событий в календаре! +5⭐ бонус!', 4000);
+  }
+}
+
 function markQuest(done) {
   const key = questDateKey(today());
   const log = questLog[key];
@@ -2342,8 +2407,10 @@ function markQuest(done) {
   questLog[key] = { ...log, done, stars };
   localStorage.setItem('quest_log', JSON.stringify(questLog));
 
-  // Бонус за серию каждые 7 дней
+  // Бонусы за выполнение
   if (done) {
+    checkMorningBonus();
+    checkBirthdayBonus();
     const streak = questStreakDays();
     if (streak > 0 && streak % 7 === 0) {
       const bonusKey = `${questDateKey(today())}_bonus_streak${streak}`;
@@ -2896,6 +2963,8 @@ function saveEvent() {
   closeModal();
   toast(editingId ? `«${name}» обновлено` : `«${name}» добавлено`);
   scheduleReminders();
+  // Бонус за 10 событий
+  checkTenEventsBonus();
 }
 
 function deleteEvent(id) {
