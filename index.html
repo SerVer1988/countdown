@@ -2531,7 +2531,7 @@ function renderQuestScreen() {
     <div class="quest-card">${taskBlock}</div>
 
     <div class="quest-history">
-      <div class="quest-history-label">Последние 6 дней</div>
+      <div class="quest-history-label">Последние 7 дней</div>
       <div class="quest-week-row">${historyDots}</div>
     </div>
 
@@ -2546,6 +2546,14 @@ function renderQuestScreen() {
       font-family:Manrope,sans-serif;font-size:12px;font-weight:700;
       cursor:pointer;letter-spacing:0.03em">
       🧪 ТЕСТ: Симулировать новый день
+    </button>
+    <button onclick="addTestStars()" style="
+      margin-top:6px;width:100%;padding:10px;
+      background:#fff3cd;color:#856404;
+      border:1.5px dashed #ffc107;border-radius:var(--radius-sm);
+      font-family:Manrope,sans-serif;font-size:12px;font-weight:700;
+      cursor:pointer;letter-spacing:0.03em">
+      🧪 ТЕСТ: +20 звёзд
     </button>`;
 
   // Если задание ещё не сгенерировано — запускаем генерацию (один раз)
@@ -2619,6 +2627,14 @@ function markQuest(done) {
       }
     }
   }
+  renderQuestScreen();
+}
+
+function addTestStars() {
+  const key = `${questDateKey(today())}_test_stars`;
+  questLog[key] = { stars: 20, type: 'test_bonus' };
+  localStorage.setItem('quest_log', JSON.stringify(questLog));
+  toast('🧪 +20 звёзд добавлено');
   renderQuestScreen();
 }
 
