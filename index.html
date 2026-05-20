@@ -1417,53 +1417,72 @@ function switchTab(tab) {
 let pendingMonthResult = null;
 
 function calcMonthStats(year, month) {
-  const prefix  = `${year}-${String(month+1).padStart(2,'0')}`;
-  const entries = Object.entries(questLog).filter(([k]) => k.startsWith(prefix) && !k.includes('_bonus'));
+  const prefix      = `${year}-${String(month+1).padStart(2,'0')}`;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
   let stars = 0, daysLogged = 0, daysDone = 0, bestStreak = 0, cur = 0;
-  // Sort by date for streak calc
-  entries.sort(([a],[b]) => a.localeCompare(b)).forEach(([,v]) => {
-    stars += (v.stars || 0);
-    if (v.done !== undefined) {
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key   = `${prefix}-${String(d).padStart(2,'0')}`;
+    const entry = questLog[key];
+
+    if (entry?.done === true) {
+      daysLogged++; daysDone++;
+      stars += (entry.stars || 0);
+      cur++; bestStreak = Math.max(bestStreak, cur);
+    } else if (entry?.done === false) {
       daysLogged++;
-      if (v.done) { daysDone++; cur++; bestStreak = Math.max(bestStreak, cur); }
-      else cur = 0;
+      stars += (entry.frozen ? 0 : -1); // заморожен = 0, иначе -1
+      cur = 0;
+    } else {
+      // Нет отметки — штраф -1⭐
+      stars -= 1;
+      cur = 0;
     }
-  });
-  // Count bonus stars
-  Object.entries(questLog).filter(([k]) => k.startsWith(prefix+'_bonus'))
-    .forEach(([,v]) => { stars += (v.stars||0); });
+  }
+
+  // Бонусы и траты (ключи со спецсимволами: _bonus_, _spend_)
+  Object.entries(questLog)
+    .filter(([k]) => k.startsWith(prefix) && k.includes('_'))
+    .forEach(([, v]) => { stars += (v.stars || 0); });
+
   return { stars, daysLogged, daysDone, bestStreak };
 }
 
 function checkMonthEnd() {
   if (!questProfile) return;
-  const t       = today();
+  const cycle = getQuestCycle();
+  if (!cycle || cycle.idx === 0) return; // первый цикл ещё не завершён
+
   const months  = JSON.parse(localStorage.getItem('quest_months') || '{}');
-  const prevDate = new Date(t.getFullYear(), t.getMonth() - 1, 1);
-  const prevKey  = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
-  if (!months[prevKey]) {
-    const stats = calcMonthStats(prevDate.getFullYear(), prevDate.getMonth());
-    if (stats.daysLogged > 0) {
-      // Бонус +15⭐ за закрытый месяц без пропусков
-      const fullMonth = stats.daysDone === stats.daysLogged && stats.daysLogged >= 15;
-      if (fullMonth) {
-        const bonusKey = `${prevKey}-01_bonus_fullmonth`;
-        if (!questLog[bonusKey]) {
-          questLog[bonusKey] = { stars: 15, type: 'fullmonth_bonus' };
-          localStorage.setItem('quest_log', JSON.stringify(questLog));
-        }
-        stats.stars += 15; // учитываем в итоговой статистике
-      }
-      const result = {
-        ...stats, goal: questProfile.monthGoal, prize: questProfile.monthPrize,
-        month: prevKey, win: stats.stars >= questProfile.monthGoal,
-        fullMonthBonus: fullMonth
-      };
-      months[prevKey] = result;
-      localStorage.setItem('quest_months', JSON.stringify(months));
-      pendingMonthResult = result;
+  const prevKey = `cycle_${cycle.idx - 1}`;
+  if (months[prevKey]) return; // уже записан
+
+  const start      = cycle.globalStart;
+  const prevStart  = addDays(start, (cycle.idx - 1) * 30);
+  const prevEnd    = addDays(start, cycle.idx * 30 - 1);
+  const stats      = calcCycleStats(prevStart, prevEnd);
+
+  const fullCycle = stats.daysDone === 30;
+  if (fullCycle) {
+    const bonusKey = `${questDateKey(prevEnd)}_bonus_fullmonth`;
+    if (!questLog[bonusKey]) {
+      questLog[bonusKey] = { stars: 15, type: 'fullmonth_bonus' };
+      localStorage.setItem('quest_log', JSON.stringify(questLog));
+      stats.stars += 15;
     }
   }
+
+  const result = {
+    ...stats, goal: questProfile.monthGoal, prize: questProfile.monthPrize,
+    cycleKey: prevKey, cycleNum: cycle.idx,
+    win: stats.stars >= questProfile.monthGoal,
+    fullMonthBonus: fullCycle,
+    month: questDateKey(prevStart).slice(0, 7)
+  };
+  months[prevKey] = result;
+  localStorage.setItem('quest_months', JSON.stringify(months));
+  pendingMonthResult = result;
 }
 
 function renderMonthResults(r) {
@@ -1700,6 +1719,10 @@ function saveProfile() {
     savedAt:    Date.now()
   };
   localStorage.setItem('quest_profile', JSON.stringify(questProfile));
+  // Фиксируем дату старта (только первый раз)
+  if (!localStorage.getItem('quest_start_date')) {
+    localStorage.setItem('quest_start_date', questDateKey(today()));
+  }
   toast('Профиль сохранён ✓');
   renderQuestScreen();
 }
@@ -2295,12 +2318,92 @@ function questDateKey(d) {
   return d.toISOString().slice(0,10);
 }
 
+/* ===== 30-ДНЕВНЫЕ ЦИКЛЫ ===== */
+function addDays(date, n) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate() + n);
+}
+
+function getQuestCycle() {
+  const startStr = localStorage.getItem('quest_start_date');
+  if (!startStr) return null;
+  const start    = parseDate(startStr);
+  const t        = today();
+  const diffDays = Math.floor((t.getTime() - start.getTime()) / 86400000);
+  const idx      = Math.floor(Math.max(0, diffDays) / 30);
+  return {
+    idx,
+    start:      addDays(start, idx * 30),
+    end:        addDays(start, (idx + 1) * 30 - 1),
+    dayInCycle: (diffDays % 30) + 1,        // 1-30
+    totalDays:  30,
+    globalStart: start
+  };
+}
+
+// Считает звёзды в диапазоне дат (включительно)
+function starsInRange(fromDate, toDate) {
+  let stars = 0;
+  Object.entries(questLog).forEach(([key, v]) => {
+    const dateStr = key.slice(0, 10);
+    if (dateStr.length < 10) return;
+    try {
+      const d = parseDate(dateStr);
+      if (d >= fromDate && d <= toDate) stars += (v.stars || 0);
+    } catch {}
+  });
+  return stars;
+}
+
 function questStarsThisMonth() {
-  const now   = today();
-  const prefix = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  return Object.entries(questLog)
-    .filter(([k]) => k.startsWith(prefix))
-    .reduce((sum,[,v]) => sum + (v.stars||0), 0);
+  const cycle = getQuestCycle();
+  if (!cycle) return 0;
+  const t = today();
+  let stars = starsInRange(cycle.start, t);
+  // Штраф за дни без отметки (до вчера)
+  let cur = new Date(cycle.start);
+  const yesterday = addDays(t, -1);
+  while (cur <= yesterday && cur < t) {
+    const entry = questLog[questDateKey(cur)];
+    if (!entry || entry.done === undefined) stars -= 1;
+    cur = addDays(cur, 1);
+  }
+  return stars;
+}
+
+// Статистика за произвольный 30-дневный диапазон
+function calcCycleStats(fromDate, toDate) {
+  let stars = 0, daysLogged = 0, daysDone = 0, bestStreak = 0, cur2 = 0;
+  let d = new Date(fromDate);
+  while (d <= toDate) {
+    const key   = questDateKey(d);
+    const entry = questLog[key];
+    if (entry?.done === true) {
+      daysLogged++; daysDone++;
+      stars += (entry.stars || 0);
+      cur2++; bestStreak = Math.max(bestStreak, cur2);
+    } else if (entry?.done === false) {
+      daysLogged++;
+      stars += (entry.frozen ? 0 : -1);
+      cur2 = 0;
+    } else {
+      stars -= 1; cur2 = 0;  // нет отметки = -1⭐
+    }
+    d = addDays(d, 1);
+  }
+  // Бонусы/траты (ключи с подчёркиванием после даты)
+  Object.entries(questLog).forEach(([key, v]) => {
+    if (!key.includes('_')) return;
+    const ds = key.slice(0, 10);
+    try { const dd = parseDate(ds); if (dd >= fromDate && dd <= toDate) stars += (v.stars||0); } catch {}
+  });
+  return { stars, daysLogged, daysDone, bestStreak };
+}
+
+function calcMonthStats(year, month) {
+  // Оставляем для совместимости, переадресуем на calendar-month диапазон
+  const from = new Date(year, month, 1);
+  const to   = new Date(year, month + 1, 0);
+  return calcCycleStats(from, to);
 }
 
 function questStreakDays() {
@@ -2320,23 +2423,26 @@ function questStreakDays() {
 function renderQuestScreen() {
   const root   = document.getElementById('quest-root');
   const now    = today();
+  const cycle  = getQuestCycle();
   const stars  = questStarsThisMonth();
   const goal   = questProfile.monthGoal || 35;
   const streak = questStreakDays();
-  const pct    = Math.min(100, Math.round(stars / goal * 100));
+  const pct    = Math.min(100, Math.max(0, Math.round(stars / goal * 100)));
 
-  const MONTHS_GEN = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
-  const monthLabel = `${MONTHS_GEN[now.getMonth()]} ${now.getFullYear()}`;
+  const dayLabel   = cycle ? `День ${cycle.dayInCycle} из 30` : '';
+  const cycleLabel = cycle ? `Цикл ${cycle.idx + 1}  ·  ${dayLabel}` : '—';
 
-  // История последних 7 дней
-  const historyDots = Array.from({length:7}, (_,i) => {
-    const d   = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6 + i);
-    const key = questDateKey(d);
-    const log = questLog[key];
-    const isToday = i === 6;
+  // История последних 6 дней
+  const historyDots = Array.from({length: 6}, (_, i) => {
+    const d       = addDays(now, i - 5);
+    const key     = questDateKey(d);
+    const log     = questLog[key];
+    const isToday = i === 5;
+    const isPast  = d < now;
     let cls = 'quest-day-dot', icon = '○';
     if (log?.done === true)  { cls += ' done';   icon = '✓'; }
-    if (log?.done === false) { cls += ' missed'; icon = '✗'; }
+    else if (log?.done === false) { cls += ' missed'; icon = '✗'; }
+    else if (isPast)         { cls += ' missed'; icon = '−'; } // нет отметки = пропуск
     if (isToday) cls += ' today';
     return `<div class="${cls}" title="${key}">${icon}</div>`;
   }).join('');
@@ -2394,7 +2500,7 @@ function renderQuestScreen() {
   root.innerHTML = `
     <div class="quest-header">
       <div class="quest-month-row">
-        <span class="quest-month">${monthLabel}</span>
+        <span class="quest-month">${cycleLabel}</span>
         <span class="quest-stars">⭐ ${stars} / ${goal}</span>
       </div>
       <div class="quest-progress-bar">
