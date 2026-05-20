@@ -2536,7 +2536,17 @@ function renderQuestScreen() {
     </div>
 
     <button class="btn-edit-profile" onclick="renderProfileForm(questProfile)">⚙ Изменить профиль</button>
-    <button class="btn-edit-profile" style="margin-top:6px" onclick="renderHistoryScreen()">📊 История месяцев</button>`;
+    <button class="btn-edit-profile" style="margin-top:6px" onclick="renderHistoryScreen()">📊 История месяцев</button>
+
+    <!-- 🧪 ТЕСТ — УДАЛИТЬ ПЕРЕД РЕЛИЗОМ -->
+    <button onclick="simulateNewDay()" style="
+      margin-top:14px;width:100%;padding:10px;
+      background:#fff3cd;color:#856404;
+      border:1.5px dashed #ffc107;border-radius:var(--radius-sm);
+      font-family:Manrope,sans-serif;font-size:12px;font-weight:700;
+      cursor:pointer;letter-spacing:0.03em">
+      🧪 ТЕСТ: Симулировать новый день
+    </button>`;
 
   // Если задание ещё не сгенерировано — запускаем генерацию (один раз)
   if (!todayLog || !todayLog.task) {
@@ -2569,18 +2579,18 @@ function checkBirthdayBonus() {
   setTimeout(() => toast('🎂 С Днём рождения! +10⭐ праздничный бонус! 🎉', 5000), 800);
 }
 
-// +6⭐ разовый бонус за 6 событий в календаре
+// +5⭐ разовый бонус за 10 событий в календаре
 function checkTenEventsBonus() {
-  if (events.length < 6) return;
+  if (events.length < 10) return;
   const bonuses = JSON.parse(localStorage.getItem('quest_bonuses') || '{}');
   if (bonuses.ten_events) return;
   bonuses.ten_events = true;
   localStorage.setItem('quest_bonuses', JSON.stringify(bonuses));
   const key = `${questDateKey(today())}_bonus_ten_events`;
   if (!questLog[key]) {
-    questLog[key] = { stars: 6, type: 'ten_events_bonus' };
+    questLog[key] = { stars: 5, type: 'ten_events_bonus' };
     localStorage.setItem('quest_log', JSON.stringify(questLog));
-    toast('🗓️ 10 событий в календаре! +6⭐ бонус!', 4000);
+    toast('🗓️ 10 событий в календаре! +5⭐ бонус!', 4000);
   }
 }
 
@@ -2609,6 +2619,15 @@ function markQuest(done) {
       }
     }
   }
+  renderQuestScreen();
+}
+
+function simulateNewDay() {
+  const key = questDateKey(today());
+  delete questLog[key];
+  localStorage.setItem('quest_log', JSON.stringify(questLog));
+  isGenerating = false;
+  toast('🧪 Новый день симулирован — генерирую задание...');
   renderQuestScreen();
 }
 
