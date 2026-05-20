@@ -1131,9 +1131,9 @@
 <header>
   <div class="logo">
     <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
-      <img src="icon.png" alt="QuestDay"
-        style="height:64px;border-radius:14px;background:#fff;padding:4px;box-shadow:0 2px 10px rgba(0,0,0,0.12)">
-      <p id="today-display" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#2C5A1A;margin:0">—</p>
+      <img src="icon3.png" alt="QuestDay"
+        style="height:80px;width:auto;display:block;mix-blend-mode:multiply">
+      <p id="today-display" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#2C5A1A;margin:0;flex-shrink:0">—</p>
     </div>
   </div>
 </header>
@@ -1973,10 +1973,13 @@ function spendStars(amount, reason) {
 }
 
 function replaceTask() {
-  if (!spendStars(1, '🔄 Замена задания')) return;
   const key = questDateKey(today());
+  const old = questLog[key];
+  if (!spendStars(1, '🔄 Замена задания')) return;
   delete questLog[key];
   localStorage.setItem('quest_log', JSON.stringify(questLog));
+  // Передаём старое задание чтобы ИИ гарантированно сделал другое
+  generateDailyTask({ forceNew: true, previousTitle: old?.task?.title });
   renderQuestScreen();
 }
 
@@ -2028,12 +2031,14 @@ function selectDirForTask(el, key) {
 
 function confirmDirPick() {
   if (!pendingForcedDirection) { toast('Выбери направление'); return; }
+  const dir = pendingForcedDirection; // сохраняем ДО closeDirPicker
   if (!spendStars(2, '🎯 Выбор направления')) { closeDirPicker(); return; }
   const todayKey = questDateKey(today());
+  const old = questLog[todayKey];
   delete questLog[todayKey];
   localStorage.setItem('quest_log', JSON.stringify(questLog));
-  closeDirPicker();
-  generateDailyTask({ forcedDirection: pendingForcedDirection });
+  closeDirPicker(); // теперь можно обнулять
+  generateDailyTask({ forcedDirection: dir, previousTitle: old?.task?.title });
   renderQuestScreen();
 }
 
@@ -2083,7 +2088,7 @@ async function generateDailyTask(options = {}) {
   if (isGenerating) return;                        // предотвращаем повторный запуск
   isGenerating = true;
 
-  const { boost = false, forcedDirection = null, previousTitle = null } = options;
+  const { boost = false, forcedDirection = null, previousTitle = null, forceNew = false } = options;
   const todayKey = questDateKey(today());
   const apiKey   = localStorage.getItem('quest_api_key');
   const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
@@ -2133,8 +2138,13 @@ async function generateDailyTask(options = {}) {
   const urgentEvent = getUrgentEvent();
 
   let boostModifier = '';
-  if (boost) {
-    boostModifier = `\nВАЖНО: предыдущее задание "${previousTitle || ''}" было скучным. Сгенерируй НЕОБЫЧНОЕ, ВДОХНОВЛЯЮЩЕЕ, запоминающееся задание — нестандартный подход, элемент игры или открытия.`;
+  if (boost && previousTitle) {
+    boostModifier = `\nВАЖНО: предыдущее задание "${previousTitle}" было скучным. Сгенерируй НЕОБЫЧНОЕ, ВДОХНОВЛЯЮЩЕЕ задание — нестандартный подход, элемент игры или открытия.`;
+  }
+
+  let replaceModifier = '';
+  if (forceNew && previousTitle) {
+    replaceModifier = `\nВАЖНО: пользователь ЗАМЕНИЛ задание "${previousTitle}" — значит оно не понравилось. Сгенерируй КАРДИНАЛЬНО ДРУГОЕ: другое направление, другой формат, другая активность. Не повторяй ни тему, ни формат предыдущего задания.`;
   }
 
   let dirModifier = '';
@@ -2146,7 +2156,7 @@ async function generateDailyTask(options = {}) {
 Отвечай ТОЛЬКО валидным JSON без markdown и без лишнего текста.
 Формат: {"title":"до 65 символов","description":"3-4 конкретных предложения","category":"название","categoryEmoji":"эмодзи","difficulty":"easy|medium|hard","duration":"X минут","tip":"1 совет","type":"interest|event|fact|media"}
 easy=1⭐(5-15мин), medium=2⭐(15-30мин), hard=3⭐(30+мин). Пиши на русском.
-Если есть предстоящее событие — ОБЯЗАТЕЛЬНО встрой его в задание (подготовь поздравление, найди подарок, вспомни историю, найди 5 фактов о событии).${boostModifier}${dirModifier}`;
+Если есть предстоящее событие — ОБЯЗАТЕЛЬНО встрой его в задание (подготовь поздравление, найди подарок, вспомни историю, найди 5 фактов о событии).${boostModifier}${replaceModifier}${dirModifier}`;
 
   const eventSection = urgentEvent
     ? `\n⚡ СРОЧНОЕ СОБЫТИЕ (ПРИОРИТЕТ): ${urgentEvent}\nЗадание ДОЛЖНО быть связано с этим событием!`
