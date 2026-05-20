@@ -2531,7 +2531,7 @@ function renderQuestScreen() {
     <div class="quest-card">${taskBlock}</div>
 
     <div class="quest-history">
-      <div class="quest-history-label">Последние 7 дней</div>
+      <div class="quest-history-label">Последние 6 дней</div>
       <div class="quest-week-row">${historyDots}</div>
     </div>
 
@@ -2569,18 +2569,18 @@ function checkBirthdayBonus() {
   setTimeout(() => toast('🎂 С Днём рождения! +10⭐ праздничный бонус! 🎉', 5000), 800);
 }
 
-// +5⭐ разовый бонус за 10 событий в календаре
+// +6⭐ разовый бонус за 6 событий в календаре
 function checkTenEventsBonus() {
-  if (events.length < 10) return;
+  if (events.length < 6) return;
   const bonuses = JSON.parse(localStorage.getItem('quest_bonuses') || '{}');
   if (bonuses.ten_events) return;
   bonuses.ten_events = true;
   localStorage.setItem('quest_bonuses', JSON.stringify(bonuses));
   const key = `${questDateKey(today())}_bonus_ten_events`;
   if (!questLog[key]) {
-    questLog[key] = { stars: 5, type: 'ten_events_bonus' };
+    questLog[key] = { stars: 6, type: 'ten_events_bonus' };
     localStorage.setItem('quest_log', JSON.stringify(questLog));
-    toast('🗓️ 10 событий в календаре! +5⭐ бонус!', 4000);
+    toast('🗓️ 10 событий в календаре! +6⭐ бонус!', 4000);
   }
 }
 
