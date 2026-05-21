@@ -1975,11 +1975,11 @@ function spendStars(amount, reason) {
 function replaceTask() {
   const key = questDateKey(today());
   const old = questLog[key];
-  if (!spendStars(1, '🔄 Замена задания')) return;
+  if (!spendStars(2, '🔄 Замена задания')) return;
   delete questLog[key];
   localStorage.setItem('quest_log', JSON.stringify(questLog));
-  // Передаём старое задание чтобы ИИ гарантированно сделал другое
-  generateDailyTask({ forceNew: true, previousTitle: old?.task?.title });
+  // noEvents: не делаем упор на событиях + вдохновляющее/необычное
+  generateDailyTask({ forceNew: true, noEvents: true, previousTitle: old?.task?.title });
   renderQuestScreen();
 }
 
@@ -1987,22 +1987,10 @@ function freezeDay() {
   const key = questDateKey(today());
   if (questLog[key]?.done !== undefined) { toast('Сегодня уже отмечено'); return; }
   if (questLog[key]?.frozen) { toast('День уже заморожен ❄️'); return; }
-  if (!spendStars(3, '❄️ Заморозка дня')) return;
+  if (!spendStars(2, '❄️ Заморозка дня')) return;
   questLog[key] = { ...(questLog[key] || {}), frozen: true };
   localStorage.setItem('quest_log', JSON.stringify(questLog));
-  toast('День заморожен ❄️ — пропуск не засчитается');
-  renderQuestScreen();
-}
-
-function boostTask() {
-  const key = questDateKey(today());
-  if (questLog[key]?.done !== undefined) { toast('Задание уже выполнено'); return; }
-  if (!spendStars(1, '✨ Усиление задания')) return;
-  // Удаляем текущее и генерируем «усиленное»
-  const old = questLog[key];
-  delete questLog[key];
-  localStorage.setItem('quest_log', JSON.stringify(questLog));
-  generateDailyTask({ boost: true, previousTitle: old?.task?.title });
+  toast('День заморожен ❄️ — если пропустишь, штрафа не будет');
   renderQuestScreen();
 }
 
@@ -2085,15 +2073,14 @@ function getRecentTaskTitles() {
 }
 
 async function generateDailyTask(options = {}) {
-  if (isGenerating) return;                        // предотвращаем повторный запуск
+  if (isGenerating) return;
   isGenerating = true;
 
-  const { boost = false, forcedDirection = null, previousTitle = null, forceNew = false } = options;
+  const { boost = false, forcedDirection = null, previousTitle = null, forceNew = false, noEvents = false } = options;
   const todayKey = questDateKey(today());
   const apiKey   = localStorage.getItem('quest_api_key');
   const endpoint = 'https://openrouter.ai/api/v1/chat/completions';
 
-  // Показываем спиннер прямо в карточке (без вызова renderQuestScreen)
   const card = document.querySelector('.quest-card');
   if (card) card.innerHTML = `
     <div class="quest-loading">
@@ -2119,51 +2106,20 @@ async function generateDailyTask(options = {}) {
     return d ? `${d.emoji} ${d.label}` : k;
   });
 
-  // Принудительное направление
   let forcedDirLabel = '';
   if (forcedDirection) {
     const d = DIRECTIONS.find(x => x.key === forcedDirection);
     if (d) forcedDirLabel = `${d.emoji} ${d.label}`;
   }
 
-  // Детальный контекст событий с реакцией
-  const evCtx = getUpcomingEventsContext();
-  const recentTasks = getRecentTaskTitles();
-  const stars  = questStarsThisMonth();
-  const streak = questStreakDays();
-  const t      = today();
-  const dateStr = t.toLocaleDateString('ru', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const recentTasks    = getRecentTaskTitles();
+  const stars          = questStarsThisMonth();
+  const streak         = questStreakDays();
+  const t              = today();
+  const dateStr        = t.toLocaleDateString('ru', {weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const urgentEvent    = noEvents ? null : getUrgentEvent();
 
-  // Ближайшее событие для приоритетной реакции
-  const urgentEvent = getUrgentEvent();
-
-  let boostModifier = '';
-  if (boost && previousTitle) {
-    boostModifier = `\nВАЖНО: предыдущее задание "${previousTitle}" было скучным. Сгенерируй НЕОБЫЧНОЕ, ВДОХНОВЛЯЮЩЕЕ задание — нестандартный подход, элемент игры или открытия.`;
-  }
-
-  let replaceModifier = '';
-  if (forceNew && previousTitle) {
-    replaceModifier = `\nВАЖНО: пользователь ЗАМЕНИЛ задание "${previousTitle}" — значит оно не понравилось. Сгенерируй КАРДИНАЛЬНО ДРУГОЕ: другое направление, другой формат, другая активность. Не повторяй ни тему, ни формат предыдущего задания.`;
-  }
-
-  let dirModifier = '';
-  if (forcedDirLabel) {
-    dirModifier = `\nОБЯЗАТЕЛЬНО: задание ТОЛЬКО по направлению "${forcedDirLabel}". Игнорируй остальные направления.`;
-  }
-
-  const systemPrompt = `Ты персональный коуч в приложении QuestDay. Генерируешь ОДНО практичное задание на день.
-Отвечай ТОЛЬКО валидным JSON без markdown и без лишнего текста.
-Формат: {"title":"до 65 символов","description":"3-4 конкретных предложения","category":"название","categoryEmoji":"эмодзи","difficulty":"easy|medium|hard","duration":"X минут","tip":"1 совет","type":"interest|event|fact|media"}
-easy=1⭐(5-15мин), medium=2⭐(15-30мин), hard=3⭐(30+мин). Пиши на русском.
-Если есть предстоящее событие — ОБЯЗАТЕЛЬНО встрой его в задание (подготовь поздравление, найди подарок, вспомни историю, найди 5 фактов о событии).${boostModifier}${replaceModifier}${dirModifier}`;
-
-  const eventSection = urgentEvent
-    ? `\n⚡ СРОЧНОЕ СОБЫТИЕ (ПРИОРИТЕТ): ${urgentEvent}\nЗадание ДОЛЖНО быть связано с этим событием!`
-    : evCtx.length
-      ? `\nПредстоящие события:\n${evCtx.join('\n')}`
-      : '\nПредстоящих событий нет';
-
+  // Пол и возраст из профиля
   const genderLabel = questProfile.gender === 'male' ? 'Мужской' : questProfile.gender === 'female' ? 'Женский' : '';
   let ageLabel = '';
   if (questProfile.birthday) {
@@ -2175,13 +2131,71 @@ easy=1⭐(5-15мин), medium=2⭐(15-30мин), hard=3⭐(30+мин). Пиши 
   }
   const personCtx = [genderLabel, ageLabel].filter(Boolean).join(', ');
 
-  const userPrompt = `Дата: ${dateStr}
-${personCtx ? `Пол и возраст: ${personCtx}` : ''}
-Направления: ${dirLabels.join(', ')}
-О себе: ${questProfile.about || 'не указано'}
-Прогресс: ⭐${stars}/${questProfile.monthGoal} | 🔥${streak}дн.${eventSection}
-Недавние задания (не повторять):
-${recentTasks.map((x,i)=>`${i+1}. ${x}`).join('\n')||'нет'}`;
+  // Модификаторы
+  let replaceModifier = '';
+  if (forceNew && previousTitle) {
+    replaceModifier = `\n"rejected_task": "${previousTitle}",\n"mode": "replace_unusual_inspiring",`;
+  }
+  let dirModifier = '';
+  if (forcedDirLabel) {
+    dirModifier = `\n"forced_direction": "${forcedDirLabel}",`;
+  }
+
+  const systemPrompt = `Ты — интеллектуальный генератор персональных ежедневных квестов для приложения QuestDay.
+
+Создавай УНИКАЛЬНЫЕ, ИНТЕРЕСНЫЕ и НЕ ШАБЛОННЫЕ задания. Каждое задание должно вызывать мысль: «О, это реально прикольно. Хочу сделать.»
+
+ЗАПРЕЩЕНО создавать банальные задания: «выпей воды», «погуляй 10 минут», «почитай книгу», «послушай музыку», «посмотри фильм» — ЕСЛИ только это не превращено в уникальный персонализированный квест.
+
+## ПРАВИЛА ГЕНЕРАЦИИ
+
+1. ГЛУБОКАЯ ПЕРСОНАЛИЗАЦИЯ
+Анализируй что пользователю реально интересно. Необычно совмещай 2–4 интереса в одном задании.
+Пример: Музыка + психология → «Включи 3 песни из разных жанров, определи как каждая меняет настроение. Выбери "саундтрек дня".»
+
+2. МЕНЯЙ ФОРМАТ (чередуй каждый день):
+— мини-миссии и расследования
+— эксперименты и проверка гипотез
+— социальные челленджи
+— задания на наблюдательность
+— интеллектуальные игры
+— быстрые челленджи (3–10 мин)
+— глубокие квесты (20–40 мин)
+— задания на рефлексию
+
+3. 20–30% ЗАДАНИЙ — НЕ ПО ИНТЕРЕСАМ (расширение кругозора):
+— удивительные факты которые взрывают мозг
+— находки которые звучат как ложь но правда
+— мини-исследования реального мира
+— наблюдения за тем что обычно игнорируется
+
+4. НЕ ПОВТОРЯЙ механику, тему и формат из recent_tasks минимум 7 дней
+
+5. ЭЛЕМЕНТ ИГРЫ: интрига, неожиданный поворот, любопытство, ощущение достижения
+
+Если upcoming_events не пустой — встрой событие в задание.
+Если mode="replace" — КАРДИНАЛЬНО другое, другая тема и формат, без событий.
+Если forced_direction — ТОЛЬКО это направление, максимально креативно.
+
+Отвечай ТОЛЬКО валидным JSON без markdown и пояснений:
+{"title":"до 65 символов","description":"захватывающее описание квеста (3-4 предложения, конкретно и интересно)","category":"название","categoryEmoji":"эмодзи","difficulty":"easy|medium|hard","duration":"X минут","tip":"неожиданный совет или факт","type":"interest|event|fact|media"}
+easy=5-15мин, medium=15-30мин, hard=30+мин. Язык: русский.`;
+
+  const inputData = {
+    date: dateStr,
+    ...(personCtx ? { gender_age: personCtx } : {}),
+    interests_and_about: questProfile.about || 'не указано',
+    directions: dirLabels,
+    energy_level: 3,
+    available_time_minutes: 20,
+    progress: `⭐${stars}/${questProfile.monthGoal} | 🔥${streak} дн`,
+    upcoming_events: (urgentEvent && !noEvents) ? [urgentEvent] : [],
+    recent_tasks: recentTasks.slice(0, 10),
+    ...(forceNew && previousTitle ? { mode: 'replace', rejected_task: previousTitle } : {}),
+    ...(forcedDirLabel ? { forced_direction: forcedDirLabel } : {}),
+  };
+
+  const userPrompt = JSON.stringify(inputData, null, 2);
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30000);
@@ -2197,7 +2211,7 @@ ${recentTasks.map((x,i)=>`${i+1}. ${x}`).join('\n')||'нет'}`;
       },
       body: JSON.stringify({
         model: 'anthropic/claude-3-haiku',
-        max_tokens: 600,
+        max_tokens: 700,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user',   content: userPrompt   }
@@ -2475,12 +2489,11 @@ function renderQuestScreen() {
     taskBlock = `
       <div style="text-align:center;padding:20px 0;color:${col}">
         <div style="font-size:2.5rem">${icon}</div>
-        <div style="font-size:14px;font-weight:700;margin-top:8px">${todayLog.done ? 'Выполнено! +'+todayLog.stars+'⭐' : 'Пропущено −1⭐'}</div>
+        <div style="font-size:14px;font-weight:700;margin-top:8px">${todayLog.done ? 'Выполнено! +2⭐' : todayLog.frozen ? 'Пропущено · 0⭐ (заморожен ❄️)' : 'Пропущено −2⭐'}</div>
         <div style="font-size:12px;color:var(--text3);margin-top:4px">${todayLog.task?.title||''}</div>
       </div>`;
   } else {
     const t = todayLog.task;
-    const starsStr = '⭐'.repeat(t.difficulty === 'easy' ? 1 : t.difficulty === 'hard' ? 3 : 2);
     taskBlock = `
       <div class="quest-card-label">
         Задание на сегодня
@@ -2489,20 +2502,19 @@ function renderQuestScreen() {
       <div class="quest-card-meta">
         <span class="quest-meta-chip cat">${t.categoryEmoji||''} ${t.category||''}</span>
         <span class="quest-meta-chip">${t.duration||''}</span>
-        <span class="quest-meta-chip stars">${starsStr}</span>
+        <span class="quest-meta-chip stars">⭐⭐</span>
         ${todayLog.frozen ? '<span class="quest-meta-chip" style="background:#E2EEF3;color:#4a8ab5">❄️ Заморожен</span>' : ''}
       </div>
       <div class="quest-title">${escapeHtml(t.title)}</div>
       <div class="quest-desc">${escapeHtml(t.description)}</div>
       ${t.tip ? `<div class="quest-tip">💡 ${escapeHtml(t.tip)}</div>` : ''}
       <div class="quest-actions">
-        <button class="quest-done-btn yes" onclick="markQuest(true)">✓ Выполнено</button>
-        <button class="quest-done-btn no"  onclick="markQuest(false)">✗ Пропустить</button>
+        <button class="quest-done-btn yes" onclick="markQuest(true)">✓ Выполнено +2⭐</button>
+        <button class="quest-done-btn no"  onclick="markQuest(false)">✗ Пропустить −2⭐</button>
       </div>
       <div class="quest-spend-bar">
-        <button class="spend-btn" onclick="replaceTask()"><span class="spend-icon">🔄</span>Заменить<span class="spend-cost">−1⭐</span></button>
-        <button class="spend-btn" onclick="freezeDay()" ${todayLog.frozen?'disabled':''}><span class="spend-icon">❄️</span>Заморозить<span class="spend-cost">−3⭐</span></button>
-        <button class="spend-btn" onclick="boostTask()"><span class="spend-icon">✨</span>Усилить<span class="spend-cost">−1⭐</span></button>
+        <button class="spend-btn" onclick="replaceTask()"><span class="spend-icon">🔄</span>Заменить<span class="spend-cost">−2⭐</span></button>
+        <button class="spend-btn" onclick="freezeDay()" title="Пропустить без штрафа" ${todayLog.frozen?'disabled':''}><span class="spend-icon">❄️</span>Заморозить<span class="spend-cost">−2⭐</span></button>
         <button class="spend-btn" onclick="openDirPicker()"><span class="spend-icon">🎯</span>Тема<span class="spend-cost">−2⭐</span></button>
       </div>`;
   }
@@ -2606,14 +2618,10 @@ function markQuest(done) {
   const key = questDateKey(today());
   const log = questLog[key];
   if (!log) return;
-  // Если заморожен и пропускает — не снимаем звезду
-  const stars = done
-    ? (log.task.difficulty === 'easy' ? 1 : log.task.difficulty === 'hard' ? 3 : 2)
-    : (log.frozen ? 0 : -1);
+  const stars = done ? 2 : (log.frozen ? 0 : -2);
   questLog[key] = { ...log, done, stars };
   localStorage.setItem('quest_log', JSON.stringify(questLog));
 
-  // Бонусы за выполнение
   if (done) {
     checkMorningBonus();
     checkBirthdayBonus();
