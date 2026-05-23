@@ -13,7 +13,7 @@
 <link rel="icon" href="icon.png" type="image/png">
 <link rel="apple-touch-icon" href="icon.png">
 <title>QuestDay</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&family=Alumni+Sans+Pinstripe&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -815,269 +815,11 @@
   }
   .btn-add-cat:hover { background: var(--amber); color: #000; }
 
-  /* ===== QUEST REDESIGN ===== */
-  :root {
-    --q-green:      #01C006;
-    --q-dark-green: #406506;
-    --q-lime:       #B8FF4A;
-    --q-lime-bg:    #C8FF5A;
-    --q-tip-bg:     #D8FFAC;
-    --q-red:        #E80303;
-    --q-salmon:     #F5ADA3;
-    --q-rose:       #D8A5A6;
-  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
-  body { background: #A8E832; }
-
-  /* --- QUEST HEADER BANNER --- */
-  .qh-wrapper {
-    position: relative; overflow: hidden;
-    height: 110px; flex-shrink: 0;
-  }
-  .qh-banner-img {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    object-fit: cover; z-index: 0;
-  }
-  .qh-prize-bg {
-    position: absolute; inset: 0; z-index: 0;
-    background-size: cover; background-position: center;
-    opacity: 0.35;
-  }
-  .qh-prize-circle {
-    position: absolute; left: 7px; top: 50%; transform: translateY(-50%);
-    width: 82px; height: 82px; border-radius: 50%;
-    overflow: hidden; z-index: 3;
-  }
-  .qh-prize-circle img { width: 100%; height: 100%; object-fit: cover; }
-  .qh-prize-placeholder {
-    width: 100%; height: 100%;
-    background: rgba(0,0,0,0.3);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 28px;
-  }
-  .qh-topbar {
-    position: absolute; top: 6px; left: 96px; right: 6px;
-    z-index: 4; display: flex; align-items: center;
-    justify-content: space-between; gap: 6px;
-  }
-  .qh-cycle {
-    font-family: 'Manrope', sans-serif; font-size: 11px;
-    font-weight: 800; color: #fff; letter-spacing: 0.04em;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.4); white-space: nowrap;
-  }
-  .qh-stars {
-    font-family: 'Manrope', sans-serif; font-size: 13px;
-    font-weight: 800; color: #FFD700;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.4); white-space: nowrap;
-  }
-  .qh-icons { display: flex; gap: 6px; align-items: center; }
-  .qh-icon {
-    width: 34px; height: 34px; border-radius: 50%;
-    cursor: pointer; transition: transform 0.15s;
-    object-fit: cover;
-  }
-  .qh-icon:hover { transform: scale(1.1); }
-  .qh-date {
-    position: absolute; bottom: 8px; left: 96px;
-    z-index: 4; font-family: 'Manrope', sans-serif;
-    font-size: 14px; font-weight: 700; color: #fff;
-    text-shadow: 0 1px 4px rgba(0,0,0,0.4);
-  }
-
-  /* --- DATES / SETTINGS OVERLAY --- */
-  .full-overlay {
-    position: fixed; inset: 0; z-index: 500;
-    background: #A8E832; display: none;
-    flex-direction: column; overflow: hidden;
-  }
-  .full-overlay.open { display: flex; }
-  .overlay-topbar {
-    background: linear-gradient(135deg, #ABD887, #DEF2C4);
-    padding: 12px 16px; display: flex; align-items: center; gap: 12px;
-    box-shadow: 0 2px 8px rgba(28,58,14,0.15);
-    flex-shrink: 0;
-  }
-  .overlay-back {
-    width: 34px; height: 34px; border-radius: 50%;
-    border: none; background: rgba(255,255,255,0.5);
-    color: #1C3A0E; font-size: 18px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 700;
-  }
-  .overlay-title {
-    font-family: 'Manrope', sans-serif; font-size: 15px;
-    font-weight: 800; color: #1C3A0E;
-  }
-  .overlay-body { flex: 1; overflow-y: auto; padding: 16px; }
-
-  /* --- QUEST DIALOG CARD --- */
-  .qd-wrapper {
-    position: relative; margin: 0 8px 10px;
-  }
-  .qd-card {
-    background: #fff;
-    border-radius: 20px;
-    padding: 14px 14px 14px;
-    position: relative; z-index: 1;
-  }
-  .qd-card::before {
-    content: ''; position: absolute; inset: -3px;
-    border-radius: 23px; z-index: -1;
-    background: linear-gradient(to bottom, var(--q-green), var(--q-dark-green));
-  }
-  .qd-robot {
-    position: absolute; top: -18px; right: -6px; z-index: 5;
-    width: 70px; height: auto; pointer-events: none;
-  }
-  .qd-tail {
-    position: absolute; top: 16px; right: 56px; z-index: 4;
-    width: 28px; height: auto; pointer-events: none;
-  }
-
-  .qd-header-label {
-    font-family: 'Manrope', sans-serif; font-size: 9px;
-    font-weight: 800; color: var(--q-dark-green);
-    letter-spacing: 0.08em; text-transform: uppercase;
-    margin-bottom: 5px;
-  }
-  .qd-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
-  .qd-chip {
-    font-size: 10px; font-weight: 700; padding: 2px 10px;
-    border-radius: 20px; border: 1.5px solid var(--q-green);
-    background: transparent; color: var(--q-dark-green);
-  }
-  .qd-chip.star { border-color: #E2C875; color: #8A6000; }
-
-  .qd-title {
-    font-family: 'Alumni Sans Pinstripe', serif;
-    font-size: 22px; color: var(--q-green);
-    line-height: 1.2; margin-bottom: 8px;
-    font-weight: 400;
-  }
-  .qd-desc {
-    font-family: 'Alumni Sans Pinstripe', serif;
-    font-size: 16px; color: #2A2A2A;
-    line-height: 1.5; padding-right: 50px;
-  }
-
-  /* Tip box */
-  .q-tip-box {
-    margin: 0 8px 10px;
-    background: var(--q-tip-bg);
-    border: 1.5px solid #A8D860;
-    border-radius: 14px; padding: 10px 12px;
-    display: flex; gap: 8px; align-items: flex-start;
-  }
-  .q-tip-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
-  .q-tip-text {
-    font-family: 'Alumni Sans Pinstripe', serif;
-    font-size: 15px; color: #406506; line-height: 1.45;
-  }
-
-  /* Quest action buttons */
-  .q-btn-grid {
-    margin: 0 8px 10px;
-    display: grid; grid-template-columns: 1fr 1fr 1fr;
-    gap: 7px;
-  }
-  .q-btn {
-    border-radius: 10px; border: 2px solid;
-    padding: 10px 4px; font-family: 'Manrope', sans-serif;
-    font-size: 12px; font-weight: 800; cursor: pointer;
-    text-align: center; transition: all 0.15s; line-height: 1.2;
-  }
-  .q-btn.done  { background: var(--q-green); border-color: var(--q-dark-green); color: #fff; }
-  .q-btn.done:hover { background: var(--q-dark-green); }
-  .q-btn.freeze { background: #fff; border-color: var(--q-green); color: var(--q-dark-green); }
-  .q-btn.freeze:hover { background: var(--q-tip-bg); }
-  .q-btn.skip  { background: #fff; border-color: var(--q-dark-green); color: var(--q-dark-green); }
-  .q-btn.skip:hover { background: var(--q-salmon); border-color: var(--q-red); color: var(--q-red); }
-  .q-btn.replace { background: #fff; border-color: var(--q-green); color: var(--q-dark-green); }
-  .q-btn.replace:hover { background: var(--q-tip-bg); }
-  .q-btn.theme { background: #fff; border-color: var(--q-green); color: var(--q-dark-green); }
-  .q-btn.theme:hover { background: var(--q-tip-bg); }
-  .q-btn.placeholder { background: transparent; border-color: transparent; color: transparent; pointer-events: none; }
-  .q-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  /* Days panel */
-  .q-days-panel {
-    margin: 0 8px 10px;
-    background: var(--q-lime-bg);
-    border: 2px solid #88CC00;
-    border-radius: 16px; padding: 10px 10px 12px;
-  }
-  .q-days-label {
-    font-family: 'Manrope', sans-serif; font-size: 10px;
-    font-weight: 800; letter-spacing: 0.08em;
-    text-transform: uppercase; color: var(--q-dark-green);
-    margin-bottom: 10px;
-  }
-  .q-days-row { display: flex; gap: 6px; justify-content: space-between; }
-  .q-day-item {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; gap: 3px;
-  }
-  .q-day-delta {
-    font-family: 'Manrope', sans-serif; font-size: 10px;
-    font-weight: 800; color: var(--q-dark-green); height: 14px;
-    text-align: center;
-  }
-  .q-day-circle {
-    width: 38px; height: 38px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Manrope', sans-serif; font-size: 14px;
-    font-weight: 900; border: 2px solid rgba(0,0,0,0.1);
-  }
-  .q-day-circle.done   { background: var(--q-green); color: #fff; }
-  .q-day-circle.missed { background: var(--q-red); color: #fff; }
-  .q-day-circle.today  { background: #4A90E2; color: #fff; border-color: #1A5FC2; }
-  .q-day-circle.empty  { background: rgba(255,255,255,0.6); color: #888; }
-  .q-day-num-label {
-    font-family: 'Manrope', sans-serif; font-size: 9px;
-    font-weight: 700; color: var(--q-dark-green);
-    background: rgba(255,255,255,0.7); border-radius: 6px;
-    padding: 1px 5px;
-  }
-
-  /* Quest screen scroll wrapper */
-  #quest-main {
-    flex: 1; overflow-y: auto; padding: 10px 0 20px;
-  }
-  #screen-quest {
-    display: flex; flex-direction: column;
-    min-height: 100vh;
-  }
-
-  /* Quest loading */
-  .q-loading {
-    display: flex; flex-direction: column; align-items: center;
-    justify-content: center; padding: 40px 0; gap: 12px;
-    color: var(--q-dark-green); font-size: 13px;
-    font-family: 'Manrope', sans-serif;
-  }
-  .q-spinner {
-    width: 30px; height: 30px; border: 3px solid rgba(1,192,6,0.2);
-    border-top-color: var(--q-green); border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-  }
-
-  /* Quest answered */
-  .q-answered {
-    text-align: center; padding: 24px 16px;
-  }
-  .q-answered-icon { font-size: 3rem; }
-  .q-answered-title {
-    font-family: 'Alumni Sans Pinstripe', serif;
-    font-size: 24px; margin-top: 8px; font-weight: 400;
-  }
-  .q-answered-sub {
-    font-family: 'Manrope', sans-serif;
-    font-size: 12px; color: var(--q-dark-green); margin-top: 4px;
-  }
-
-  /* Spend bar replaced — no longer used */
-  .quest-spend-bar { display: none; }
-</style>
+  /* ===== TABS ===== */
   .tabs-bar {
     display: flex; gap: 0;
     background: #fff;
@@ -1386,96 +1128,94 @@
 </head>
 <body>
 
-<!-- ===== QUEST SCREEN (main) ===== -->
-<div id="screen-quest">
-
-  <div class="qh-wrapper" id="qh-wrapper">
-    <div class="qh-prize-bg" id="qh-prize-bg"></div>
-    <img src="banner.png" class="qh-banner-img" alt="">
-    <div class="qh-prize-circle" id="qh-prize-circle">
-      <div class="qh-prize-placeholder">🎁</div>
+<header>
+  <div class="logo">
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+      <img src="icon3.png" alt="QuestDay"
+        style="height:80px;width:auto;display:block;mix-blend-mode:multiply">
+      <p id="today-display" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:#2C5A1A;margin:0;flex-shrink:0">—</p>
     </div>
-    <div class="qh-topbar">
-      <div>
-        <div class="qh-cycle" id="qh-cycle-label">ЦИКЛ 1 · ДЕНЬ 1 из 30</div>
-        <div class="qh-stars" id="qh-stars-label">⭐ 0 / 35</div>
-      </div>
-      <div class="qh-icons">
-        <img src="calendar.png" class="qh-icon" onclick="showOverlay('screen-dates')" title="Даты">
-        <img src="settings.png" class="qh-icon" onclick="showSettingsOverlay()" title="Настройки">
-      </div>
-    </div>
-    <div class="qh-date" id="qh-date-label">—</div>
   </div>
+</header>
 
-  <main id="quest-main">
-    <div id="quest-root"></div>
-  </main>
-
+<!-- TABS -->
+<div class="tabs-bar">
+  <button class="tab-btn active" id="tab-btn-dates" onclick="switchTab('dates')">📅 Даты</button>
+  <button class="tab-btn"        id="tab-btn-quest" onclick="switchTab('quest')">⚡ QuestDay</button>
 </div>
 
-<!-- ===== DATES OVERLAY ===== -->
-<div class="full-overlay" id="screen-dates">
-  <div class="overlay-topbar">
-    <button class="overlay-back" onclick="hideOverlay('screen-dates')">←</button>
-    <span class="overlay-title">📅 Даты</span>
-  </div>
-  <div class="overlay-body">
-    <button class="add-btn" onclick="openModal()">
-      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
+<main>
+  <!-- ===== TAB: ДАТЫ ===== -->
+  <div id="tab-dates">
+  <button class="add-btn" onclick="openModal()">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <line x1="8" y1="2" x2="8" y2="14"/><line x1="2" y1="8" x2="14" y2="8"/>
+    </svg>
+    Добавить событие
+  </button>
+
+  <div class="toolbar-row">
+    <button class="tool-btn" onclick="downloadData()" title="Экспорт данных">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="2" x2="8" y2="11"/><polyline points="5,8 8,11 11,8"/><path d="M3 14h10"/>
       </svg>
-      Добавить событие
+      Экспорт
     </button>
-    <div class="toolbar-row">
-      <button class="tool-btn" onclick="downloadData()">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="2" x2="8" y2="11"/><polyline points="5,8 8,11 11,8"/><path d="M3 14h10"/></svg>
-        Экспорт
-      </button>
-      <button class="tool-btn" onclick="document.getElementById('import-file').click()">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="11" x2="8" y2="2"/><polyline points="5,5 8,2 11,5"/><path d="M3 14h10"/></svg>
-        Импорт
-      </button>
-      <button class="tool-btn" onclick="toggleCalendar()" id="cal-toggle-btn">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="3" width="12" height="11" rx="2"/><line x1="5" y1="1" x2="5" y2="5"/><line x1="11" y1="1" x2="11" y2="5"/><line x1="2" y1="7" x2="14" y2="7"/></svg>
-        Календарь
-      </button>
-      <button class="tool-btn" onclick="openCatManager()">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="8" r="2"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.5 3.5l.7.7M11.8 11.8l.7.7M11.8 4.2l-.7.7M4.2 11.8l-.7.7"/></svg>
-        Категории
-      </button>
-      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"/>
-    </div>
-    <div class="cal-widget" id="cal-widget">
-      <div class="cal-header">
-        <button class="cal-nav" onclick="calPrev()">‹</button>
-        <span class="cal-title" id="cal-title" onclick="calGoToday()">—</span>
-        <button class="cal-nav" onclick="calNext()">›</button>
-      </div>
-      <div class="cal-grid" id="cal-grid"></div>
-      <div class="cal-filter-hint" id="cal-hint" style="display:none" onclick="calClearFilter()">✕ Сбросить фильтр</div>
-    </div>
-    <div class="sort-bar" id="sort-bar" style="display:none">
-      <button class="sort-btn active" data-sort="closest" onclick="setSort(this,'closest')">По близости</button>
-      <button class="sort-btn" data-sort="added" onclick="setSort(this,'added')">Недавно добавленные</button>
-    </div>
-    <div class="cat-filter-bar" id="cat-filter-bar" style="display:none"></div>
-    <div id="events-container"></div>
+    <button class="tool-btn" onclick="document.getElementById('import-file').click()" title="Импорт данных">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="11" x2="8" y2="2"/><polyline points="5,5 8,2 11,5"/><path d="M3 14h10"/>
+      </svg>
+      Импорт
+    </button>
+    <button class="tool-btn" onclick="toggleCalendar()" id="cal-toggle-btn" title="Мини-календарь">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <rect x="2" y="3" width="12" height="11" rx="2"/>
+        <line x1="5" y1="1" x2="5" y2="5"/><line x1="11" y1="1" x2="11" y2="5"/>
+        <line x1="2" y1="7" x2="14" y2="7"/>
+      </svg>
+      Календарь
+    </button>
+    <button class="tool-btn" onclick="openCatManager()" title="Управление категориями">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <circle cx="8" cy="8" r="2"/><path d="M8 2v1M8 13v1M2 8h1M13 8h1M3.5 3.5l.7.7M11.8 11.8l.7.7M11.8 4.2l-.7.7M4.2 11.8l-.7.7"/>
+      </svg>
+      Категории
+    </button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"/>
   </div>
-</div>
 
-<!-- ===== SETTINGS OVERLAY ===== -->
-<div class="full-overlay" id="screen-settings">
-  <div class="overlay-topbar">
-    <button class="overlay-back" onclick="hideOverlay('screen-settings')">←</button>
-    <span class="overlay-title">⚙️ Профиль</span>
+  <!-- MINI CALENDAR -->
+  <div class="cal-widget" id="cal-widget">
+    <div class="cal-header">
+      <button class="cal-nav" onclick="calPrev()">‹</button>
+      <span class="cal-title" id="cal-title" onclick="calGoToday()">—</span>
+      <button class="cal-nav" onclick="calNext()">›</button>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+    <div class="cal-filter-hint" id="cal-hint" style="display:none" onclick="calClearFilter()">
+      ✕ Сбросить фильтр по дате
+    </div>
   </div>
-  <div class="overlay-body">
-    <div id="settings-root"></div>
-  </div>
-</div>
 
-<!-- MODAL -->rlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div class="sort-bar" id="sort-bar" style="display:none">
+    <button class="sort-btn active" data-sort="closest" onclick="setSort(this,'closest')">По близости</button>
+    <button class="sort-btn"        data-sort="added"   onclick="setSort(this,'added')">Недавно добавленные</button>
+  </div>
+
+  <div class="cat-filter-bar" id="cat-filter-bar" style="display:none"><!-- rendered by JS --></div>
+
+  <div id="events-container"></div>
+
+  </div><!-- /tab-dates -->
+
+  <!-- ===== TAB: КВЕСТ ===== -->
+  <div id="tab-quest" class="quest-section" style="display:none">
+    <div id="quest-root"></div>
+  </div>
+</main>
+
+<!-- MODAL -->
+<div class="overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
   <div class="modal">
     <h2 id="modal-title">Новое событие</h2>
 
@@ -1663,44 +1403,6 @@ function sortedEvents() {
   return arr;
 }
 
-/* ===== NAVIGATION ===== */
-function showOverlay(id) {
-  document.getElementById(id).classList.add('open');
-  if (id === 'screen-dates') renderEvents();
-}
-
-function hideOverlay(id) {
-  document.getElementById(id).classList.remove('open');
-}
-
-function showSettingsOverlay() {
-  const root = document.getElementById('settings-root');
-  if (root) renderProfileForm(questProfile);
-  // Move quest-root content to settings-root temporarily
-  document.getElementById('screen-settings').classList.add('open');
-}
-
-function showHistoryInSettings() {
-  document.getElementById('screen-settings').classList.add('open');
-  const root = document.getElementById('settings-root');
-  if (root) renderHistoryScreen();
-}
-
-/* Keep switchTab for any legacy calls */
-function switchTab(tab) {
-  if (tab === 'dates') showOverlay('screen-dates');
-  else hideOverlay('screen-dates');
-}
-
-function updateHeaderDate() {
-  const el = document.getElementById('qh-date-label');
-  if (!el) return;
-  const now = today();
-  const DAYS_RU   = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
-  const MONTHS_RU = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-  el.textContent = `${DAYS_RU[now.getDay()]}, ${now.getDate()} ${MONTHS_RU[now.getMonth()]} ${now.getFullYear()}`;
-}
-
 /* ===== TABS ===== */
 function switchTab(tab) {
   activeTab = tab;
@@ -1844,7 +1546,7 @@ function renderQuestRoot() {
   if (pendingMonthResult) {
     renderMonthResults(pendingMonthResult);
   } else if (!questProfile) {
-    showSettingsOverlay(); // открываем настройки для заполнения профиля
+    renderProfileForm();
   } else {
     renderQuestScreen();
   }
@@ -1852,8 +1554,7 @@ function renderQuestRoot() {
 
 /* ===== PROFILE FORM ===== */
 function renderProfileForm(prefill) {
-  const root = document.getElementById('settings-root') || document.getElementById('quest-root');
-  if (!root) return;
+  const root = document.getElementById('quest-root');
   const p = prefill || questProfile || {};
 
   root.innerHTML = `
@@ -2018,11 +1719,11 @@ function saveProfile() {
     savedAt:    Date.now()
   };
   localStorage.setItem('quest_profile', JSON.stringify(questProfile));
+  // Фиксируем дату старта (только первый раз)
   if (!localStorage.getItem('quest_start_date')) {
     localStorage.setItem('quest_start_date', questDateKey(today()));
   }
   toast('Профиль сохранён ✓');
-  hideOverlay('screen-settings');
   renderQuestScreen();
 }
 
@@ -2745,131 +2446,6 @@ function questStreakDays() {
 
 function renderQuestScreen() {
   const root   = document.getElementById('quest-root');
-  const now    = today();
-  const cycle  = getQuestCycle();
-  const stars  = questStarsThisMonth();
-  const goal   = questProfile.monthGoal || 35;
-  const streak = questStreakDays();
-  const pct    = Math.min(100, Math.max(0, Math.round(stars / goal * 100)));
-
-  // Update header labels
-  if (cycle) {
-    document.getElementById('qh-cycle-label').textContent =
-      `ЦИКЛ ${cycle.idx+1} · ДЕНЬ ${cycle.dayInCycle} из 30`;
-    document.getElementById('qh-stars-label').textContent =
-      `⭐ ${stars} / ${goal}`;
-  }
-  const MONTHS_RU = ['января','февраля','марта','апреля','мая','июня',
-    'июля','августа','сентября','октября','ноября','декабря'];
-  const DAYS_RU = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
-  document.getElementById('qh-date-label').textContent =
-    `${DAYS_RU[now.getDay()]}, ${now.getDate()} ${MONTHS_RU[now.getMonth()]} ${now.getFullYear()}`;
-
-  // Prize image in header circle
-  const prizeImg = localStorage.getItem('quest_prize_image');
-  const circle   = document.getElementById('qh-prize-circle');
-  if (prizeImg && circle) {
-    circle.innerHTML = `<img src="${prizeImg}" alt="Приз">`;
-    const bg = document.getElementById('qh-prize-bg');
-    if (bg) bg.style.backgroundImage = `url(${prizeImg})`;
-  }
-
-  // Today's log
-  const todayKey = questDateKey(now);
-  const todayLog = questLog[todayKey];
-  const answered = todayLog && todayLog.done !== undefined;
-
-  let taskHTML = '';
-
-  if (!todayLog || !todayLog.task) {
-    taskHTML = `<div class="q-loading"><div class="q-spinner"></div><span>Генерация задания...</span></div>`;
-  } else if (answered) {
-    const done = todayLog.done;
-    taskHTML = `
-      <div class="qd-wrapper">
-        <div class="qd-card">
-          <div class="q-answered">
-            <div class="q-answered-icon">${done ? '✅' : (todayLog.frozen ? '❄️' : '❌')}</div>
-            <div class="q-answered-title" style="color:${done?'var(--q-green)':'var(--q-red)'}">
-              ${done ? 'Выполнено! +2⭐' : todayLog.frozen ? 'Заморожено · 0⭐' : 'Пропущено −2⭐'}
-            </div>
-            <div class="q-answered-sub">${escapeHtml(todayLog.task?.title||'')}</div>
-          </div>
-        </div>
-        <img src="robot.png" class="qd-robot" alt="">
-      </div>`;
-  } else {
-    const t = todayLog.task;
-    const frozen = todayLog.frozen;
-    const dateLabel = `${now.getDate()} ${MONTHS_RU[now.getMonth()]}`;
-
-    taskHTML = `
-      <div class="qd-wrapper">
-        <img src="robot.png" class="qd-robot" alt="">
-        <img src="tail.png"  class="qd-tail"  alt="">
-        <div class="qd-card">
-          <div class="qd-header-label">Задание на сегодня · ${dateLabel}</div>
-          <div class="qd-chips">
-            ${t.category ? `<span class="qd-chip">${t.categoryEmoji||''} ${t.category}</span>` : ''}
-            ${t.duration  ? `<span class="qd-chip">${t.duration}</span>` : ''}
-            <span class="qd-chip star">⭐⭐</span>
-            ${frozen ? '<span class="qd-chip" style="border-color:#4A90E2;color:#1A5FC2">❄️ заморожен</span>' : ''}
-          </div>
-          <div class="qd-title">${escapeHtml(t.title)}</div>
-          <div class="qd-desc">${escapeHtml(t.description)}</div>
-        </div>
-      </div>
-      ${t.tip ? `
-      <div class="q-tip-box">
-        <span class="q-tip-icon">💡</span>
-        <span class="q-tip-text">${escapeHtml(t.tip)}</span>
-      </div>` : ''}
-      <div class="q-btn-grid">
-        <button class="q-btn done"    onclick="markQuest(true)">Выполнено +2</button>
-        <button class="q-btn freeze"  onclick="freezeDay()" ${frozen?'disabled':''}>Заморозить ${frozen?'❄️':'-2'}</button>
-        <button class="q-btn skip"    onclick="markQuest(false)">Пропустить -2</button>
-        <button class="q-btn replace" onclick="replaceTask()">Заменить -2</button>
-        <button class="q-btn placeholder"></button>
-        <button class="q-btn theme"   onclick="openDirPicker()">Тема -2</button>
-      </div>`;
-  }
-
-  // Last 6 days
-  const dayDots = Array.from({length:6}, (_,i) => {
-    const d      = addDays(now, i - 5);
-    const key    = questDateKey(d);
-    const log    = questLog[key];
-    const isPast = d < now;
-    const isToday= i === 5;
-    let cls = 'q-day-circle', delta = '', num = d.getDate();
-
-    if (log?.done === true)       { cls += ' done';   delta = `+2`; }
-    else if (log?.done === false) { cls += ' missed'; delta = log.frozen ? '0' : '-2'; }
-    else if (isPast)              { cls += ' missed'; delta = '-1'; }
-    if (isToday)                   cls += ' today';
-    if (!log && !isPast)           cls  = 'q-day-circle empty';
-
-    return `<div class="q-day-item">
-      <div class="q-day-delta">${delta}</div>
-      <div class="${cls}">${num}</div>
-      <div class="q-day-num-label">${i+1} д.</div>
-    </div>`;
-  }).join('');
-
-  root.innerHTML = taskHTML + `
-    <div class="q-days-panel">
-      <div class="q-days-label">Последние 6 дней</div>
-      <div class="q-days-row">${dayDots}</div>
-    </div>
-    <button class="btn-edit-profile" onclick="showSettingsOverlay()" style="margin:0 8px 6px">⚙ Изменить профиль</button>
-    <button class="btn-edit-profile" onclick="showHistoryInSettings()" style="margin:0 8px 6px">📊 История циклов</button>
-    <button onclick="simulateNewDay()" style="margin:0 8px 6px;width:calc(100% - 16px);padding:9px;background:#fff3cd;color:#856404;border:1.5px dashed #ffc107;border-radius:var(--radius-sm);font-family:Manrope,sans-serif;font-size:11px;font-weight:700;cursor:pointer">🧪 ТЕСТ: Симулировать новый день</button>
-    <button onclick="addTestStars()"   style="margin:0 8px 16px;width:calc(100% - 16px);padding:9px;background:#fff3cd;color:#856404;border:1.5px dashed #ffc107;border-radius:var(--radius-sm);font-family:Manrope,sans-serif;font-size:11px;font-weight:700;cursor:pointer">🧪 ТЕСТ: +20 звёзд</button>`;
-
-  if (!todayLog || !todayLog.task) {
-    if (!isGenerating) generateDailyTask();
-  }
-}
   const now    = today();
   const cycle  = getQuestCycle();
   const stars  = questStarsThisMonth();
@@ -3905,7 +3481,7 @@ function initApp() {
   events = loadEvents();
   checkMonthEnd();
   updateHeaderDate();
-  renderQuestRoot();   // квест — главный экран
+  renderEvents();
   checkDailyReminders();
   scheduleReminders();
 }
