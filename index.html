@@ -381,11 +381,23 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 .btn-edit-profile:hover { color: var(--text2); border-color: var(--border2); }
 
 /* ========== НОВАЯ КАРТОЧКА ЗАДАНИЯ ========== */
-.quest-card-wrapper { position: relative; margin-right: 88px; margin-bottom: 14px; margin-top: 14px; }
-.quest-dialogue-card { position: relative; background: #fff; border-radius: 22px; padding: 16px 16px 14px; isolation: isolate; }
-.quest-dialogue-card::before { content: ''; position: absolute; inset: -3px; border-radius: 25px; background: linear-gradient(160deg, #7BE854 0%, #2D8A00 45%, #A8E860 100%); z-index: -1; }
-.quest-tail  { position: absolute; right: -22px; top: 28px; width: 26px; height: auto; z-index: 3; pointer-events: none; }
-.quest-robot { position: absolute; right: -92px; top: -8px; width: 84px; height: auto; z-index: 2; pointer-events: none; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.12)); }
+.quest-card-wrapper {
+  position: relative;
+  background: linear-gradient(150deg, #7ECC44 0%, #3A9900 100%);
+  border-radius: 24px;
+  padding: 14px 100px 14px 14px;
+  margin: 14px 0;
+  overflow: visible;
+}
+.quest-dialogue-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 14px 14px 12px;
+  border: 2px solid rgba(0,110,0,0.35);
+  box-shadow: 0 2px 8px rgba(0,80,0,0.1);
+}
+.quest-tail  { position: absolute; right: 93px; top: 22px; width: 18px; height: auto; z-index: 3; pointer-events: none; }
+.quest-robot { position: absolute; right: 4px; top: -16px; width: 90px; height: auto; z-index: 2; pointer-events: none; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
 .quest-card-label { font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #4A7A30; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 .quest-card-label .label-date { font-weight: 400; text-transform: none; letter-spacing: 0; color: #8AAA6A; }
 .quest-card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -394,8 +406,12 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 .quest-meta-chip.stars { background: transparent; color: #B8860B; letter-spacing: 2px; padding-left: 4px; }
 .quest-title { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1.55rem; font-weight: 400; color: #2D8A00; line-height: 1.25; margin-bottom: 9px; }
 .quest-desc  { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1.1rem; font-weight: 400; color: #1C2E10; line-height: 1.55; margin-bottom: 10px; }
-.quest-tip   { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1.05rem; font-style: italic; color: #3A6A1A; line-height: 1.5; margin-bottom: 14px; padding: 10px 12px 10px 36px; background-image: url('tip.png'); background-size: 100% 100%; background-repeat: no-repeat; position: relative; border-radius: 10px; min-height: 48px; background-color: #D9FF9C; }
-.quest-tip::before { content: ''; position: absolute; left: 10px; top: 10px; font-size: 14px; font-style: normal; }
+.quest-tip   { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1.1rem; font-style: italic; color: #2A5010; line-height: 1.5; margin-top: 10px; margin-bottom: 10px; padding: 10px 12px 10px 36px; background-image: url('tip.png'); background-size: 100% 100%; background-repeat: no-repeat; position: relative; border-radius: 10px; min-height: 48px; background-color: #D9FF9C; }
+.quest-tip::before { content: '💡'; position: absolute; left: 10px; top: 10px; font-size: 14px; font-style: normal; }
+/* Кнопки на зелёном фоне враппера */
+.quest-actions-main  { margin-top: 10px; }
+.quest-actions-spend { margin-top: 7px; }
+.quest-btn { border-radius: 12px; }
 
 .quest-actions-main  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-bottom: 7px; }
 .quest-actions-spend { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
@@ -418,7 +434,7 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 .quest-answered-sub  { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1rem; color: #8AAA6A; margin-top: 4px; }
 
 /* ========== ПОЛЕ «ПОСЛЕДНИЕ 6 ДНЕЙ» ========== */
-.quest-field { position: relative; background-image: url('field.png'); background-size: 100% 100%; background-repeat: no-repeat; border-radius: 18px; padding: 28px 10px 14px; margin-bottom: 12px; min-height: 140px; background-color: #C8F07A; }
+.quest-field { position: relative; background-image: url('field.png'); background-size: 100% 100%; background-repeat: no-repeat; border-radius: 18px; padding: 36px 8px 18px; margin-bottom: 12px; min-height: 148px; background-color: #C8F07A; }
 .field-row   { display: flex; gap: 3px; align-items: flex-end; }
 .field-slot  { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .field-score { font-family: 'Manrope', sans-serif; font-size: 11px; font-weight: 700; height: 16px; line-height: 16px; text-align: center; }
@@ -501,8 +517,9 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
   .header-stars-val { font-size: 16px; }
   .header-icon-btn, .header-icon-btn img { width: 38px; height: 38px; }
   main { padding: 0 0.75rem; }
-  .quest-card-wrapper { margin-right: 80px; }
-  .quest-robot { right: -84px; width: 76px; }
+  .quest-card-wrapper { padding-right: 88px; }
+  .quest-robot { right: 3px; top: -12px; width: 80px; }
+  .quest-tail  { right: 81px; }
   .field-circle { width: 38px; height: 38px; font-size: 12px; }
   .field-chin   { width: 30px; font-size: 8px; }
 }
@@ -901,7 +918,7 @@ function renderQuestScreen() {
   const todayLog = questLog[todayKey];
   const answered = todayLog && todayLog.done !== undefined;
 
-  let taskInner;
+  let taskInner, buttonsBlock = '';
   if (!todayLog || !todayLog.task) {
     taskInner = `<div class="quest-loading"><div class="quest-spinner"></div><span>Генерация задания...</span></div>`;
   } else if (answered) {
@@ -914,6 +931,7 @@ function renderQuestScreen() {
     </div>`;
   } else {
     const t=todayLog.task, frozen=!!todayLog.frozen;
+    // Белая карточка — только лейбл, чипы, заголовок, описание
     taskInner = `
       <div class="quest-card-label">Задание на сегодня <span class="label-date">${new Date().toLocaleDateString('ru',{day:'numeric',month:'long'})}</span></div>
       <div class="quest-card-meta">
@@ -923,7 +941,9 @@ function renderQuestScreen() {
         ${frozen?'<span class="quest-meta-chip" style="background:#E2EEF3;color:#1A7AB5">\u2744\uFE0F заморожен</span>':''}
       </div>
       <div class="quest-title">${escapeHtml(t.title)}</div>
-      <div class="quest-desc">${escapeHtml(t.description)}</div>
+      <div class="quest-desc">${escapeHtml(t.description)}</div>`;
+    // Совет и кнопки — вне белой карточки, на зелёном фоне враппера
+    buttonsBlock = `
       ${t.tip?`<div class="quest-tip">${escapeHtml(t.tip)}</div>`:''}
       <div class="quest-actions-main">
         <button class="quest-btn quest-btn-done"   onclick="markQuest(true)">Выполнено<span class="quest-btn-cost">+2\u2B50</span></button>
@@ -939,9 +959,10 @@ function renderQuestScreen() {
 
   root.innerHTML = `
     <div class="quest-card-wrapper">
-      <div class="quest-dialogue-card">${taskInner}</div>
       <img src="tail.png"  class="quest-tail"  alt="" onerror="this.style.display='none'">
       <img src="robot.gif" class="quest-robot" alt="" onerror="this.style.display='none'">
+      <div class="quest-dialogue-card">${taskInner}</div>
+      ${typeof buttonsBlock !== 'undefined' ? buttonsBlock : ''}
     </div>
     ${buildHistoryField()}
     <button class="btn-edit-profile" onclick="openHeaderSettings()">\u2699 Изменить профиль</button>
