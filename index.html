@@ -43,7 +43,7 @@
 }
 
 body {
-  background: var(--bg);
+  background: linear-gradient(160deg, #D1ECB5 0%, #C4FF5E 100%) fixed;
   color: var(--text);
   font-family: 'Manrope', sans-serif;
   font-size: 15px;
@@ -65,12 +65,14 @@ header {
   align-items: center;
   box-shadow: 0 4px 20px rgba(171,0,30,0.3);
   z-index: 10;
+  background: linear-gradient(135deg, #B01228 0%, #E84060 60%, #F8A0A0 100%);
 }
 .header-banner-bg {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover; object-position: left center;
   z-index: 0; pointer-events: none;
+  mix-blend-mode: screen;
 }
 .prize-zone {
   position: relative; z-index: 2; flex-shrink: 0;
@@ -84,7 +86,7 @@ header {
 }
 .prize-placeholder {
   width: 86px; height: 86px; border-radius: 50%;
-  background: rgba(0,0,0,0.35);
+  background: transparent;
   margin-top: 12px; margin-left: 12px;
   display: flex; align-items: center; justify-content: center;
   font-size: 26px;
@@ -124,7 +126,7 @@ header {
 }
 .header-icon-btn:hover  { transform: scale(1.1); }
 .header-icon-btn:active { transform: scale(0.95); }
-.header-icon-btn img { width: 44px; height: 44px; object-fit: contain; display: block; }
+.header-icon-btn img { width: 44px; height: 44px; object-fit: contain; display: block; mix-blend-mode: screen; }
 .header-icon-btn.dates-active { opacity: 0.65; }
 
 /* ========== MAIN ========== */
@@ -383,21 +385,22 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 /* ========== НОВАЯ КАРТОЧКА ЗАДАНИЯ ========== */
 .quest-card-wrapper {
   position: relative;
-  background: linear-gradient(150deg, #7ECC44 0%, #3A9900 100%);
-  border-radius: 24px;
-  padding: 14px 100px 14px 14px;
+  background: linear-gradient(150deg, #7ECC44 0%, #45AA00 100%);
+  border-radius: 32px;
+  padding: 14px;
   margin: 14px 0;
   overflow: visible;
 }
 .quest-dialogue-card {
   background: #ffffff;
-  border-radius: 16px;
+  border-radius: 28px;
   padding: 14px 14px 12px;
-  border: 2px solid rgba(0,110,0,0.35);
-  box-shadow: 0 2px 8px rgba(0,80,0,0.1);
+  border: 4px solid #2D8A00;
+  box-shadow: 0 2px 14px rgba(0,80,0,0.15);
+  margin-right: 88px;
 }
-.quest-tail  { position: absolute; right: 93px; top: 22px; width: 18px; height: auto; z-index: 3; pointer-events: none; }
-.quest-robot { position: absolute; right: 4px; top: -16px; width: 90px; height: auto; z-index: 2; pointer-events: none; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
+.quest-tail  { position: absolute; right: 91px; top: 58px; width: 22px; height: auto; z-index: 3; pointer-events: none; mix-blend-mode: multiply; }
+.quest-robot { position: absolute; right: 2px; top: -22px; width: 94px; height: auto; z-index: 2; pointer-events: none; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
 .quest-card-label { font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #4A7A30; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 .quest-card-label .label-date { font-weight: 400; text-transform: none; letter-spacing: 0; color: #8AAA6A; }
 .quest-card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
@@ -406,7 +409,7 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 .quest-meta-chip.stars { background: transparent; color: #B8860B; letter-spacing: 2px; padding-left: 4px; }
 .quest-title { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1.55rem; font-weight: 400; color: #2D8A00; line-height: 1.25; margin-bottom: 9px; }
 .quest-desc  { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1.1rem; font-weight: 400; color: #1C2E10; line-height: 1.55; margin-bottom: 10px; }
-.quest-tip   { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1.1rem; font-style: italic; color: #2A5010; line-height: 1.5; margin-top: 10px; margin-bottom: 10px; padding: 10px 12px 10px 36px; background-image: url('tip.png'); background-size: 100% 100%; background-repeat: no-repeat; position: relative; border-radius: 10px; min-height: 48px; background-color: #D9FF9C; }
+.quest-tip   { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1.1rem; font-style: italic; color: #2A5010; line-height: 1.5; margin-top: 10px; margin-bottom: 10px; padding: 12px 16px 12px 44px; background-image: url('tip.png'); background-size: 100% 100%; background-repeat: no-repeat; position: relative; border-radius: 14px; min-height: 64px; background-color: #D9FF9C; }
 .quest-tip::before { content: '💡'; position: absolute; left: 10px; top: 10px; font-size: 14px; font-style: normal; }
 /* Кнопки на зелёном фоне враппера */
 .quest-actions-main  { margin-top: 10px; }
@@ -415,16 +418,16 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 
 .quest-actions-main  { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; margin-bottom: 7px; }
 .quest-actions-spend { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 7px; }
-.quest-btn { border-radius: 12px; border: 2px solid transparent; padding: 10px 4px; font-family: 'Manrope', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; text-align: center; line-height: 1.3; transition: all 0.15s; white-space: nowrap; }
+.quest-btn { border-radius: 12px; border: 2px solid transparent; padding: 11px 4px; font-family: 'Manrope', sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; text-align: center; line-height: 1.3; transition: all 0.15s; white-space: nowrap; }
 .quest-btn:active { transform: scale(0.96); }
-.quest-btn-done   { background: #2D7A00; color: #fff; border-color: #2D7A00; }
-.quest-btn-done:hover { background: #1F5800; border-color: #1F5800; }
-.quest-btn-freeze { background: #fff; color: #1A7AB5; border-color: #ABD4F0; }
+.quest-btn-done   { background: #1E6800; color: #fff; border-color: #1A5C00; font-size: 13px; }
+.quest-btn-done:hover { background: #145000; border-color: #145000; }
+.quest-btn-freeze { background: rgba(255,255,255,0.92); color: #1A6AA0; border-color: #ABD4F0; border-width: 2px; }
 .quest-btn-freeze:hover { background: #E8F4FC; }
 .quest-btn-freeze:disabled { opacity: 0.4; cursor: not-allowed; }
-.quest-btn-skip   { background: #fff; color: #2D7A00; border-color: #ABD887; }
+.quest-btn-skip   { background: rgba(255,255,255,0.92); color: #2D7A00; border-color: #ABD887; border-width: 2px; }
 .quest-btn-skip:hover { background: #F0FAED; }
-.quest-btn-spend  { background: #fff; color: #3A5C28; border: 1.5px dashed #8DC86A; font-size: 11px; padding: 8px 4px; font-weight: 600; }
+.quest-btn-spend  { background: rgba(255,255,255,0.88); color: #2A4C18; border: 1.5px dashed #5CB030; font-size: 11px; padding: 9px 4px; font-weight: 600; }
 .quest-btn-spend:hover { background: #F0FAED; border-color: #57C300; color: #1C3A0E; }
 .quest-btn-spend:disabled { opacity: 0.35; cursor: not-allowed; }
 .quest-btn-cost { display: block; font-size: 10px; font-weight: 700; color: #C04040; margin-top: 2px; }
@@ -434,7 +437,7 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 .quest-answered-sub  { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1rem; color: #8AAA6A; margin-top: 4px; }
 
 /* ========== ПОЛЕ «ПОСЛЕДНИЕ 6 ДНЕЙ» ========== */
-.quest-field { position: relative; background-image: url('field.png'); background-size: 100% 100%; background-repeat: no-repeat; border-radius: 18px; padding: 36px 8px 18px; margin-bottom: 12px; min-height: 148px; background-color: #C8F07A; }
+.quest-field { position: relative; background-image: url('field.png'); background-size: 100% 100%; background-repeat: no-repeat; border-radius: 18px; padding: 48px 8px 18px; margin-bottom: 12px; min-height: 160px; background-color: #C8F07A; }
 .field-row   { display: flex; gap: 3px; align-items: flex-end; }
 .field-slot  { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .field-score { font-family: 'Manrope', sans-serif; font-size: 11px; font-weight: 700; height: 16px; line-height: 16px; text-align: center; }
@@ -442,7 +445,7 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 .field-score.neg  { color: #7A1010; }
 .field-score.zero { color: #5A8A4A; }
 .field-score.none { color: transparent; }
-.field-circle { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #fff; position: relative; flex-shrink: 0; transition: transform 0.15s; }
+.field-circle { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; color: #fff; position: relative; flex-shrink: 0; transition: transform 0.15s; }
 .field-circle.is-today   { box-shadow: 0 0 0 3px #fff, 0 0 0 5.5px #57C300; }
 .field-circle.done       { background: #57C300; }
 .field-circle.frozen     { background: #4ABDE8; }
@@ -450,7 +453,7 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 .field-circle.skipped    { background: #C0C0B0; color: #6A6A5A; }
 .field-circle.future     { background: #A8C880; color: #4A6B30; }
 .field-circle.today-empty{ background: #A0DC50; color: #2A5000; }
-.field-chin { width: 34px; height: 14px; border-radius: 7px; display: flex; align-items: center; justify-content: center; font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; margin-top: -1px; }
+.field-chin { width: 36px; height: 15px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-family: 'Manrope', sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; margin-top: -1px; }
 .field-chin.done       { background: #45A000; color: #fff; }
 .field-chin.frozen     { background: #38A8D0; color: #fff; }
 .field-chin.missed     { background: #B83030; color: #fff; }
@@ -517,9 +520,9 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
   .header-stars-val { font-size: 16px; }
   .header-icon-btn, .header-icon-btn img { width: 38px; height: 38px; }
   main { padding: 0 0.75rem; }
-  .quest-card-wrapper { padding-right: 88px; }
-  .quest-robot { right: 3px; top: -12px; width: 80px; }
-  .quest-tail  { right: 81px; }
+  .quest-dialogue-card { margin-right: 80px; }
+  .quest-robot { right: 2px; top: -18px; width: 82px; }
+  .quest-tail  { right: 82px; top: 52px; }
   .field-circle { width: 38px; height: 38px; font-size: 12px; }
   .field-chin   { width: 30px; font-size: 8px; }
 }
