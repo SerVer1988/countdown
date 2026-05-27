@@ -454,9 +454,42 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 .quest-answered-sub  { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1rem; color: #8AAA6A; margin-top: 4px; }
 
 /* ========== ПОЛЕ «ПОСЛЕДНИЕ 6 ДНЕЙ» ========== */
-.quest-field { position: relative; background-image: url('field.png'); background-size: 100% 100%; background-repeat: no-repeat; border-radius: 28px; border: 4px solid #5AAA20; padding: 48px 8px 18px; margin-bottom: 12px; min-height: 160px; background-color: #C8F07A; }
-.field-row   { display: flex; gap: 2px; align-items: flex-end; justify-content: space-between; }
-.field-slot  { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+/* ═══ ПОЛЕ «6 ДНЕЙ» ═════════════════════════════════════════
+   aspect-ratio: 707/231 = точные пропорции field.png
+   Фон не растягивается по высоте.
+
+   ПОЗИЦИИ КРУЖКОВ (data-slot="1"..,"6"):
+   left  = смещение слева (% ширины поля)
+   top   = смещение сверху (px или %)
+   Меняй каждый кружок отдельно!
+═══════════════════════════════════════════════════════════ */
+.quest-field {
+  position: relative;
+  aspect-ratio: 707 / 231; /* точный размер field.png */
+  width: 100%;
+  background-image: url('field.png');
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  border-radius: 28px;
+  border: 4px solid #5AAA20;
+  margin-bottom: 12px;
+  background-color: #C8F07A;
+  overflow: visible;
+}
+
+/* Флекс-строка убрана — теперь каждый слот абсолютный */
+.field-row  { position: absolute; inset: 0; }
+.field-slot { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 3px; transform: translateX(-50%); }
+
+/* ── ПОЗИЦИИ КРУЖКОВ — редактируй здесь ─────────────────
+   left: % от ширины поля (центр кружка)
+   top:  % от высоты поля (верх score-текста)        */
+.field-slot[data-slot="1"] { left: 8.5%;  top: 12%; }
+.field-slot[data-slot="2"] { left: 24.5%; top: 12%; }
+.field-slot[data-slot="3"] { left: 40.5%; top: 12%; }
+.field-slot[data-slot="4"] { left: 56.5%; top: 12%; }
+.field-slot[data-slot="5"] { left: 72.5%; top: 12%; }
+.field-slot[data-slot="6"] { left: 88.5%; top: 12%; }
 .field-score { font-family: 'Manrope', sans-serif; font-size: 11px; font-weight: 700; height: 16px; line-height: 16px; text-align: center; }
 .field-score.pos  { color: #1C5000; }
 .field-score.neg  { color: #7A1010; }
@@ -574,9 +607,11 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
    ║    Поиск: .field-circle {                             ║
    ║    width / height — диаметр кружка                    ║
    ║                                                       ║
-   ║  КРУЖКИ 6 ДНЕЙ — позиция (вверх-вниз):               ║
-   ║    Поиск: .quest-field {                              ║
-   ║    padding: 48px ...  ← 1-е число: вниз = больше     ║
+   ║  КРУЖКИ 6 ДНЕЙ — позиции ИНДИВИДУАЛЬНЫЕ:             ║
+   ║    Поиск: .field-slot[data-slot="1"] {                ║
+   ║    left: 8.5%  → горизонталь (центр кружка)          ║
+   ║    top:  12%   → вертикаль (вниз = больше %)         ║
+   ║    Слоты 1..6 — каждый отдельно!                     ║
    ╚══════════════════════════════════════════════════════╝ */
 </style>
 </head>
@@ -951,7 +986,7 @@ function buildHistoryField() {
     else if (isToday)                         { status='today-empty'; scoreVal='';                            scoreClass='none'; }
     else                                      { status='future';      scoreVal='';                            scoreClass='none'; }
     const todayCls = isToday ? ' is-today' : '';
-    return `<div class="field-slot">
+    return `<div class="field-slot" data-slot="${i+1}">
       <div class="field-score ${scoreClass}">${scoreVal||'&nbsp;'}</div>
       <div class="field-circle ${status}${todayCls}">${dayNum}</div>
       <div class="field-chin ${status}">${slotNum}&thinsp;д.</div>
