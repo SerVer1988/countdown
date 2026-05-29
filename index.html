@@ -78,14 +78,14 @@ header {
 }
 .prize-zone {
   position: absolute;
-  left: 0; top: 0; bottom: 0;
+  left: -5; top: -10; bottom: 0;
   width: 126px;
   z-index: 0;
   display: flex; align-items: center; justify-content: center;
 }
 .prize-photo {
-  width: 110px; height: 110px; border-radius: 50%;
-  object-fit: cover; margin-top: 8px; margin-left: 10px;
+  width: 120px; height: 120px; border-radius: 50%;
+  object-fit: cover; margin-top: 5px; margin-left: 13px;
   display: block;
 }
 .prize-placeholder {
@@ -409,7 +409,7 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 /* ═══ ХВОСТИК — двигай right и top ═══ */
 .quest-tail {
   position: absolute;
-  right: 60px;   /* <-- ПРАВО-ЛЕВО */
+  right: 68px;   /* <-- ПРАВО-ЛЕВО */
   top: 10px;     /* <-- ВЕРХ-НИЗ */
   width: 30px;
   height: auto;
@@ -428,7 +428,7 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 .quest-title { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1.55rem; font-weight: 400; color: #2D8A00; line-height: 1.25; margin-bottom: 9px; }
 .quest-desc  { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1.1rem; font-weight: 400; color: #1C2E10; line-height: 1.55; margin-bottom: 10px; }
 .quest-tip   { font-family: 'Alumni Sans Pinstripe', serif; font-size: 1.1rem; font-style: italic; color: #2A5010; line-height: 1.5; margin-top: 10px; margin-bottom: 10px; padding: 12px 16px 12px 44px; background-image: url('tip.png'); background-size: 100% 100%; background-repeat: no-repeat; position: relative; border-radius: 14px; min-height: 64px; background-color: #D9FF9C; }
-.quest-tip::before { content: '💡'; position: absolute; left: 10px; top: 10px; font-size: 14px; font-style: normal; }
+.quest-tip::before { content: ''; position: absolute; left: 10px; top: 10px; font-size: 14px; font-style: normal; }
 /* Кнопки на зелёном фоне враппера */
 .quest-actions-main  { margin-top: 10px; }
 .quest-actions-spend { margin-top: 7px; }
