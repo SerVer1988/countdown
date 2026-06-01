@@ -65,7 +65,7 @@ header {
   display: flex;
   align-items: center;
   box-shadow: 0 0px 0px rgba(171,0,30,0.3);
-  z-index: 5;
+  z-index: 1;
   background: #F4FBED;
   padding-left: 100px;
 }
@@ -401,7 +401,7 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 .quest-dialogue-card {
   background: #ffffff;
   border-radius: 28px;
-  padding: 14px 110px 12px 14px; /* справа 110px — место под робота */
+  padding: 14px 14px 12px 14px; /* обычный padding, без ограничения справа */
   border: 4px solid #2D8A00;
   box-shadow: 0 2px 14px rgba(0,80,0,0.15);
   margin-right: 0 !important; /* полная ширина */
@@ -411,13 +411,13 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 .quest-tail { display: none; } /* хвостик удалён */
 /* ═══ РОБОТ — двигай right, top, width ═══ */
 .quest-robot { position: absolute; right: 0px; /* <-- ПРАВО-ЛЕВО */ top: -30px; /* <-- ВЕРХ-НИЗ */ width: 120px; /* <-- РАЗМЕР */ height: auto; z-index: 7; pointer-events: none; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.2)); }
-.quest-card-label { font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #4A7A30; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.quest-card-label { font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #4A7A30; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; padding-right: 110px; /* место под робота */ }
 .quest-card-label .label-date { font-weight: 400; text-transform: none; letter-spacing: 0; color: #8AAA6A; }
-.quest-card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.quest-card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; padding-right: 110px; /* место под робота */ }
 .quest-meta-chip { font-family: 'Manrope', sans-serif; font-size: 11px; padding: 3px 10px; border-radius: 20px; background: #DEF2C4; color: #4A7A30; font-weight: 600; }
 .quest-meta-chip.cat   { background: rgba(87,195,0,0.15); color: #2D8A00; }
 .quest-meta-chip.stars { background: transparent; color: #B8860B; letter-spacing: 2px; padding-left: 4px; }
-.quest-title { font-family: 'Manrope', sans-serif; font-size: 1.05rem; font-weight: 700; color: #2D8A00; line-height: 1.35; margin-bottom: 9px; }
+.quest-title { font-family: 'Manrope', sans-serif; font-size: 1.05rem; font-weight: 700; color: #2D8A00; line-height: 1.35; margin-bottom: 9px; padding-right: 110px; /* место под робота */ }
 .quest-desc  { font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 400; color: #1C2E10; line-height: 1.6; margin-bottom: 10px; }
 .quest-tip   { font-family: 'Manrope', sans-serif; font-size: 13px; font-style: italic; color: #2A5010; line-height: 1.5; margin-top: 10px; margin-bottom: 10px; padding: 12px 16px 12px 44px; background-image: url('tip.png'); background-size: 100% 100%; background-repeat: no-repeat; position: relative; border-radius: 14px; min-height: 64px; background-color: #D9FF9C; }
 .quest-tip::before { content: '💡'; position: absolute; left: 10px; top: 10px; font-size: 14px; font-style: normal; }
