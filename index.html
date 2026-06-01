@@ -57,18 +57,17 @@ body::before { display: none; }
 /* ========== НОВАЯ ШАПКА ========== */
 header {
   position: relative;
-  max-width: 860px;
+  max-width: 840px;
   margin: 0 auto;
-  border-radius: 0 0 24px 24px;
+  border-radius: 60px 0px 0px 60px;
   overflow: hidden;
-  height: 148px;
+  height: 50px;
   display: flex;
   align-items: center;
-  box-shadow: 0 4px 20px rgba(171,0,30,0.3);
+  box-shadow: 0 0px 0px rgba(171,0,30,0.3);
   z-index: 10;
-  background: transparent;
-  padding-left: 110px;
-  /* Цвет transparent = баннер показывает свои цвета без подложки */
+  background: #5A0010;
+  padding-left: 100px;
 }
 .header-banner-bg {
   position: absolute; inset: 0;
@@ -84,14 +83,14 @@ header {
   display: flex; align-items: center; justify-content: center;
 }
 .prize-photo {
-  width: 114px; height: 114px; border-radius: 50%;
-  object-fit: cover; margin-top: 6px; margin-left: 8px;
+  width: 120px; height: 120px; border-radius: 50%;
+  object-fit: cover; margin-top: 10px; margin-left: 10px;
   display: block;
-  background: #fff; /* белая подложка — фото не прозрачное */
 }
 .prize-placeholder {
   width: 110px; height: 110px; border-radius: 50%;
   background: transparent;
+  margin-top: 12px; margin-left: 12px;
   margin-top: 12px; margin-left: 12px;
   display: flex; align-items: center; justify-content: center;
   font-size: 26px;
@@ -405,29 +404,19 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
   padding: 14px 14px 12px;
   border: 4px solid #2D8A00;
   box-shadow: 0 2px 14px rgba(0,80,0,0.15);
-  margin-right: 120px; /* место для 150px робота */
+  /* карточка на всю ширину, робот поверх */
 }
-/* ═══ ХВОСТИК — двигай right и top ═══ */
-.quest-tail {
-  position: absolute;
-  right: 118px;  /* <-- ПРАВО-ЛЕВО: у правого края карточки */
-  top: 95px;     /* <-- ВЕРХ-НИЗ: ниже робота */
-  width: 32px;
-  height: auto;
-  z-index: 8;    /* поверх робота (z-index:5) */
-  pointer-events: none;
-  mix-blend-mode: screen;
-}
+.quest-tail { display: none; } /* хвостик удалён */
 /* ═══ РОБОТ — двигай right, top, width ═══ */
-.quest-robot { position: absolute; right: -8px; /* <-- ПРАВО-ЛЕВО */ top: -38px; /* <-- ВЕРХ-НИЗ */ width: 150px; /* <-- РАЗМЕР */ height: auto; z-index: 5; pointer-events: none; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.2)); }
+.quest-robot { position: absolute; right: 0px; /* <-- ПРАВО-ЛЕВО */ top: -30px; /* <-- ВЕРХ-НИЗ */ width: 120px; /* <-- РАЗМЕР */ height: auto; z-index: 7; pointer-events: none; filter: drop-shadow(0 6px 16px rgba(0,0,0,0.2)); }
 .quest-card-label { font-family: 'Manrope', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: #4A7A30; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
 .quest-card-label .label-date { font-weight: 400; text-transform: none; letter-spacing: 0; color: #8AAA6A; }
 .quest-card-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .quest-meta-chip { font-family: 'Manrope', sans-serif; font-size: 11px; padding: 3px 10px; border-radius: 20px; background: #DEF2C4; color: #4A7A30; font-weight: 600; }
 .quest-meta-chip.cat   { background: rgba(87,195,0,0.15); color: #2D8A00; }
 .quest-meta-chip.stars { background: transparent; color: #B8860B; letter-spacing: 2px; padding-left: 4px; }
-.quest-title { font-family: 'Manrope', sans-serif; font-size: 1.1rem; font-weight: 700; color: #2D8A00; line-height: 1.3; margin-bottom: 9px; }
-.quest-desc  { font-family: 'Manrope', sans-serif; font-size: 14px; font-weight: 400; color: #1C2E10; line-height: 1.6; margin-bottom: 10px; }
+.quest-title { font-family: 'Manrope', sans-serif; font-size: 1.05rem; font-weight: 700; color: #2D8A00; line-height: 1.35; margin-bottom: 9px; }
+.quest-desc  { font-family: 'Manrope', sans-serif; font-size: 13px; font-weight: 400; color: #1C2E10; line-height: 1.6; margin-bottom: 10px; }
 .quest-tip   { font-family: 'Manrope', sans-serif; font-size: 13px; font-style: italic; color: #2A5010; line-height: 1.5; margin-top: 10px; margin-bottom: 10px; padding: 12px 16px 12px 44px; background-image: url('tip.png'); background-size: 100% 100%; background-repeat: no-repeat; position: relative; border-radius: 14px; min-height: 64px; background-color: #D9FF9C; }
 .quest-tip::before { content: '💡'; position: absolute; left: 10px; top: 10px; font-size: 14px; font-style: normal; }
 /* Кнопки на зелёном фоне враппера */
@@ -486,12 +475,12 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
 /* ── ПОЗИЦИИ КРУЖКОВ — редактируй здесь ─────────────────
    left: % от ширины поля (центр кружка)
    top:  % от высоты поля (верх score-текста)        */
-.field-slot[data-slot="1"] { left: 8.5%;  top: 12%; }
-.field-slot[data-slot="2"] { left: 24.5%; top: 12%; }
-.field-slot[data-slot="3"] { left: 40.5%; top: 12%; }
-.field-slot[data-slot="4"] { left: 56.5%; top: 12%; }
-.field-slot[data-slot="5"] { left: 72.5%; top: 12%; }
-.field-slot[data-slot="6"] { left: 88.5%; top: 12%; }
+.field-slot[data-slot="1"] { left: 9.3%;   top: 40%; }
+.field-slot[data-slot="2"] { left: 25.68%; top: 26%; }
+.field-slot[data-slot="3"] { left: 42.06%; top: 40%; }
+.field-slot[data-slot="4"] { left: 58.44%; top: 26%; }
+.field-slot[data-slot="5"] { left: 74.82%; top: 40%; }
+.field-slot[data-slot="6"] { left: 91.2%;  top: 26%; }
 .field-score { font-family: 'Manrope', sans-serif; font-size: 11px; font-weight: 700; height: 16px; line-height: 16px; text-align: center; }
 .field-score.pos  { color: #1C5000; }
 .field-score.neg  { color: #7A1010; }
@@ -576,7 +565,7 @@ main { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding
   .prize-photo, .prize-placeholder { width: 96px; height: 96px; margin-left: 8px; }
   .quest-dialogue-card { margin-right: 108px; }
   .quest-robot { right: -6px; top: -32px; width: 130px; }
-  .quest-tail  { right: 107px; top: 88px; width: 28px; }
+  .quest-tail  { right: 74px; top: 38px; width: 26px; }
   .field-circle { width: 38px; height: 38px; font-size: 12px; }
   .field-chin   { width: 30px; font-size: 8px; }
 }
