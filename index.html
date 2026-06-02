@@ -57,19 +57,20 @@ body::before { display: none; }
 /* ========== НОВАЯ ШАПКА ========== */
 header {
   position: relative;
-  max-width: 800px;
+  max-width: 840px;
   margin: 0 auto;
-  border-radius: 60px 0px 0px 60px;
+  border-radius: 0 0 20px 20px;  /* скруглить только низ — баннер перекрывает верх */
   overflow: hidden;
   height: 50px;
   display: flex;
   align-items: center;
   box-shadow: 0 0px 0px rgba(171,0,30,0.3);
-  z-index: 1;
-  background: #F4FBED;
+  z-index: 10;
+  background: #F4FBED;  /* цвет зелёного фона — незаметен рядом со страницей */
   padding-left: 100px;
 }
 .header-banner-bg {
+  mix-blend-mode: screen;  /* ← чёрный круг баннера становится прозрачным → фото видно */
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover; object-position: left center;
